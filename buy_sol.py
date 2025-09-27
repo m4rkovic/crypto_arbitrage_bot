@@ -1,3 +1,5 @@
+#buyin 
+
 import ccxt
 import os
 from dotenv import load_dotenv
@@ -8,6 +10,7 @@ def buy_shib_on_okx_testnet():
     for exactly 100,000 SHIB tokens.
     """
     # --- 1. Load API Keys ---
+    
     # Make sure you have a .env file with your OKX testnet keys.
     load_dotenv()
     api_key = os.getenv('OKX_TESTNET_API_KEY')
