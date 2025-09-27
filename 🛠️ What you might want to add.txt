@@ -1,0 +1,6 @@
+🛠️ What you might want to add
+
+GUI updates for rebalancing:
+Right now, rebalance runs silently. If you want visibility in the GUI, you can add inside:
+
+self.send_gui_update('rebalance_check', current_portfolio)
