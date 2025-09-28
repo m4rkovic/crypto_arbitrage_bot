@@ -3980,3 +3980,15 @@ Traceback (most recent call last):
     self.live_ops_tab = LiveOpsTab(tab_view.tab("Live Operations"), self.config, self)
                         ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 TypeError: LiveOpsTab.__init__() missing 1 required positional argument: 'stop_callback'
+2025-09-28 23:55:00,303 - INFO - [main:39] - Root logger configured.
+2025-09-28 23:55:00,562 - CRITICAL - [main:98] - An unexpected fatal error occurred: LiveOpsTab.__init__() missing 1 required positional argument: 'stop_callback'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\main.py", line 89, in <module>
+    app = App(unified_config)
+  File "D:\Dev\py\crypto_arbitrage_bot\gui_application.py", line 57, in __init__
+    self.create_widgets()
+    ~~~~~~~~~~~~~~~~~~~^^
+  File "D:\Dev\py\crypto_arbitrage_bot\gui_application.py", line 82, in create_widgets
+    self.live_ops_tab = LiveOpsTab(tab_view.tab("Live Operations"), self.config, self)
+                        ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: LiveOpsTab.__init__() missing 1 required positional argument: 'stop_callback'
