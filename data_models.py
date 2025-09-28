@@ -33,3 +33,5 @@ class TradeLogData:
 
     def to_dict(self):
         return asdict(self)
+    
+    

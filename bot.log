@@ -3968,27 +3968,8 @@ utils.ConfigError: CRITICAL: One or more API keys are missing from your .env fil
 2025-09-28 19:48:06,668 - INFO - [exchange_manager:31] - Initialized Binance client.
 2025-09-28 19:48:13,842 - INFO - [exchange_manager:31] - Initialized Bybit client.
 2025-09-28 19:48:13,842 - INFO - [bot_engine:40] - New bot instance created with Session ID: session_1759081693
-2025-09-28 23:40:36,350 - INFO - [main:41] - Root logger configured.
-2025-09-28 23:40:36,708 - CRITICAL - [main:100] - An unexpected fatal error occurred: LiveOpsTab.__init__() missing 1 required positional argument: 'stop_callback'
-Traceback (most recent call last):
-  File "D:\Dev\py\crypto_arbitrage_bot\main.py", line 91, in <module>
-    app = App(unified_config)
-  File "D:\Dev\py\crypto_arbitrage_bot\gui_application.py", line 57, in __init__
-    self.create_widgets()
-    ~~~~~~~~~~~~~~~~~~~^^
-  File "D:\Dev\py\crypto_arbitrage_bot\gui_application.py", line 82, in create_widgets
-    self.live_ops_tab = LiveOpsTab(tab_view.tab("Live Operations"), self.config, self)
-                        ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: LiveOpsTab.__init__() missing 1 required positional argument: 'stop_callback'
-2025-09-28 23:55:00,303 - INFO - [main:39] - Root logger configured.
-2025-09-28 23:55:00,562 - CRITICAL - [main:98] - An unexpected fatal error occurred: LiveOpsTab.__init__() missing 1 required positional argument: 'stop_callback'
-Traceback (most recent call last):
-  File "D:\Dev\py\crypto_arbitrage_bot\main.py", line 89, in <module>
-    app = App(unified_config)
-  File "D:\Dev\py\crypto_arbitrage_bot\gui_application.py", line 57, in __init__
-    self.create_widgets()
-    ~~~~~~~~~~~~~~~~~~~^^
-  File "D:\Dev\py\crypto_arbitrage_bot\gui_application.py", line 82, in create_widgets
-    self.live_ops_tab = LiveOpsTab(tab_view.tab("Live Operations"), self.config, self)
-                        ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: LiveOpsTab.__init__() missing 1 required positional argument: 'stop_callback'
+2025-09-28 23:56:13,904 - INFO - [main:35] - Simplified logging configured.
+2025-09-28 23:56:15,861 - INFO - [exchange_manager:31] - Initialized Okx client.
+2025-09-28 23:56:19,602 - INFO - [exchange_manager:31] - Initialized Binance client.
+2025-09-28 23:56:27,417 - INFO - [exchange_manager:31] - Initialized Bybit client.
+2025-09-28 23:56:27,422 - INFO - [bot_engine:40] - New bot instance created with Session ID: session_1759096587
