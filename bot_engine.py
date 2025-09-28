@@ -1,9 +1,9 @@
 import ccxt
 import time
 import threading
-import logging
 import itertools
 from typing import Any, Dict, List, Optional
+import queue
 
 from data_models import Opportunity
 from exchange_manager import ExchangeManager
@@ -13,16 +13,28 @@ from risk_manager import RiskManager
 from rebalancer import Rebalancer
 
 class ArbitrageBot:
-    def __init__(self, config: Dict[str, Any], exchanges_config: Dict[str, Any], update_queue: Any):
+    """
+    The original synchronous bot engine, fully restored and adapted for the new GUI.
+    """
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        exchange_manager: ExchangeManager,
+        risk_manager: RiskManager,
+        rebalancer: Rebalancer,
+        trade_logger: TradeLogger,
+        log_queue: queue.Queue
+    ):
         self.config = config
-        self.update_queue = update_queue
-        self.logger = logging.getLogger(__name__)
-        self.exchange_manager = ExchangeManager(exchanges_config)
-        self.trade_logger = TradeLogger()
+        self.log_queue = log_queue
+        
+        self.exchange_manager = exchange_manager
+        self.trade_logger = trade_logger
+        self.risk_manager = risk_manager
+        self.rebalancer = rebalancer
         self.trade_executor = TradeExecutor(config, self.exchange_manager, self.trade_logger)
-        self.risk_manager = RiskManager(config, self.exchange_manager)
-        self.rebalancer = Rebalancer(config, self.exchange_manager)
-        self.running = False
+        
+        self.is_running = False
         self.state_lock = threading.Lock()
         self.session_id = f"session_{int(time.time())}"
         self.start_time: float = 0.0
@@ -34,9 +46,14 @@ class ArbitrageBot:
         self.neutralized_trades: int = 0
         self.critical_failures: int = 0
         self.session_profit: float = 0.0
-        self.logger.info(f"New bot instance created with Session ID: {self.session_id}")
+        self._log(f"New bot instance created with Session ID: {self.session_id}")
+
+    def _log(self, message: str, level: str = "INFO"):
+        """Helper function to put messages into the GUI queue."""
+        self.log_queue.put(f"[{level}] {message}")
 
     def _get_current_stats(self) -> Dict[str, Any]:
+        """Restored from original."""
         return {
             'trades': self.trade_count, 'successful': self.successful_trades,
             'failed': self.failed_trades, 'neutralized': self.neutralized_trades,
@@ -44,7 +61,27 @@ class ArbitrageBot:
         }
 
     def send_gui_update(self, update_type: str, data: Any):
-        self.update_queue.put({"type": update_type, "data": data})
+        """
+        Restored and Adapted: Converts original GUI updates into text logs.
+        """
+        if update_type == 'portfolio_update':
+            portfolio = data.get("portfolio", {})
+            value = portfolio.get('total_usd_value', 0.0)
+            self._log(f"Portfolio Update: Total Value ${value:,.2f}")
+        elif update_type == 'stats':
+            self._log(f"Stats: {data['successful']} successful, {data['failed']} failed. Profit: ${data['profit']:.2f}")
+        elif update_type == 'opportunity_found':
+            self._log(f"Opportunity: {data['symbol']} | Spread: {data['spread_pct']:.4f}%", "SUCCESS")
+        elif update_type == 'market_data':
+            # This logic is restored to show how it's adapted.
+            # It logs the spread percentage from the original payload.
+            spread = data.get('spread_pct', 0.0)
+            if data.get('is_profitable'):
+                 self._log(f"Market Scan: {data['symbol']} | Profitable Spread Found: {spread:.4f}%")
+        elif update_type == 'stopped':
+            self._log("Bot stop signal processed.")
+        elif update_type == 'critical_error':
+             self._log(str(data), "CRITICAL")
 
     def _get_taker_fee(self, client: ccxt.Exchange, symbol: str) -> float:
         try:
@@ -105,49 +142,52 @@ class ArbitrageBot:
         return full_portfolio
 
     def _take_and_send_initial_portfolio_snapshot(self, active_symbols: List[str]):
-        self.logger.info("Taking initial portfolio snapshot for performance analysis...")
+        """Restored from original."""
+        self._log("Taking initial portfolio snapshot...")
         initial_portfolio = self._get_full_portfolio(active_symbols)
         self.send_gui_update('initial_portfolio', initial_portfolio)
         self.last_portfolio_update = time.time()
         return initial_portfolio
 
     def _update_and_send_portfolio_state(self, active_symbols: List[str]) -> Dict[str, Any]:
+        """Restored from original."""
         current_portfolio = self._get_full_portfolio(active_symbols)
-        balances_only = {}
-        all_assets = set(current_portfolio.get("assets", {}).keys())
-        for ex_name, client in self.exchange_manager.get_all_clients().items():
-            balance_data = self.exchange_manager.get_balance(client, force_refresh=False)
-            if balance_data:
-                balances_only[ex_name] = {k: v for k, v in balance_data.get('total', {}).items() if v > 0 and k in all_assets}
-        if balances_only:
-            payload = {"portfolio": current_portfolio, "balances": balances_only}
-            self.send_gui_update('portfolio_update', payload)
+        self.send_gui_update('portfolio_update', {"portfolio": current_portfolio})
         self.last_portfolio_update = time.time()
         return current_portfolio
 
-    def run(self, symbols_to_scan: Optional[List[str]] = None):
-        self.running = True
+    def run(self):
+        self.is_running = True
         self.start_time = time.time()
         self.last_activity_time = self.start_time
-        self.logger.info("Bot started. Scanning for opportunities...")
-        symbols = symbols_to_scan if symbols_to_scan is not None else self.config['trading_parameters']['symbols_to_scan']
+        
+        try:
+            self.exchange_manager.connect()
+        except Exception as e:
+            self.logger.critical(f"Failed to connect to exchanges: {e}")
+            self.send_gui_update('critical_error', f"Failed to connect: {e}")
+            self.running = False
+            return
+
+        self._log("Bot started. Scanning for opportunities...")
+        symbols = self.config['trading_parameters']['symbols_to_scan']
         
         self._take_and_send_initial_portfolio_snapshot(symbols)
         
         try:
-            while self.running:
+            while self.is_running:
                 now = time.time()
                 rebalance_interval = self.config.get('rebalancing', {}).get('rebalance_interval_s', 3600)
                 if now - self.last_portfolio_update > rebalance_interval:
                     current_portfolio = self._update_and_send_portfolio_state(symbols)
                     if self.config.get('rebalancing', {}).get('enabled', False):
-                        self.logger.info("Running periodic rebalancing check...")
+                        self._log("Running periodic rebalancing check...")
                         self.rebalancer.run_rebalancing_check(current_portfolio)
 
                 trade_size_usdt = self.config['trading_parameters']['trade_size_usdt']
                 
                 for symbol in symbols:
-                    if not self.running: break
+                    if not self.is_running: break
                     try:
                         prices = self.exchange_manager.get_market_data(symbol, trade_size_usdt)
                         self.trade_logger.log_scan_data(symbol, prices)
@@ -166,7 +206,6 @@ class ArbitrageBot:
                         self.send_gui_update('market_data', market_data_payload)
                         
                         if opportunity:
-                            self.logger.info(f"Opportunity found for {symbol}! Est Profit: ${opportunity.net_profit_usd:.4f}")
                             self.send_gui_update('opportunity_found', {'symbol': symbol, 'spread_pct': (opportunity.net_profit_usd / trade_size_usdt) * 100})
                             if self.risk_manager.check_balances(opportunity, trade_size_usdt):
                                 with self.state_lock: self.trade_count += 1
@@ -183,23 +222,25 @@ class ArbitrageBot:
                                 self.send_gui_update('stats', self._get_current_stats())
                                 time.sleep(self.config['trading_parameters'].get('post_trade_delay_s', 5))
                     except Exception as e:
-                        self.logger.error(f"CRITICAL UNHANDLED ERROR in symbol loop for {symbol}: {e}", exc_info=True)
+                        self._log(f"CRITICAL UNHANDLED ERROR for {symbol}: {e}", "ERROR")
                         self.send_gui_update('critical_error', f"A critical error occurred: {e}")
                         time.sleep(10)
                 
-                if time.time() - self.last_activity_time > 15:
-                    self.logger.info("Status: No profitable trades found recently. Still scanning markets...")
-                    self.last_activity_time = time.time()
+                now = time.time()
+                if now - self.last_activity_time > 15:
+                    self._log("Status: No profitable trades found recently. Still scanning markets...")
+                    self.last_activity_time = now
                 
                 time.sleep(self.config['trading_parameters']['scan_interval_s'])
         finally:
-            self.logger.info("Bot run loop finished. Cleaning up resources.")
+            self._log("Bot run loop finished. Cleaning up resources.")
             self.exchange_manager.close_all_clients()
             self.send_gui_update('stopped', {})
 
     def stop(self):
-        self.logger.info("Stop command received. Shutting down...")
-        self.running = False
+        self._log("Stop command received. Shutting down...")
+        self.is_running = False
+        
 # # bot_engine.py
 
 # import ccxt

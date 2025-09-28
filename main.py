@@ -1,161 +1,102 @@
-# gui_application.py
+# main.py
 
-import customtkinter as ctk
-import queue
-import threading
-import asyncio
+import os
+import sys
+import logging
+from logging.handlers import RotatingFileHandler
+from tkinter import messagebox
+from dotenv import load_dotenv
 
-# --- Import Your Existing GUI Components ---
-from gui_components.left_panel import LeftPanel
-from gui_components.live_ops_tab import LiveOpsTab
-from gui_components.analysis_tab import AnalysisTab
+# --- Your Original Imports, All Restored ---
+import logging_config
+from utils import load_config, ConfigError
+from gui_application import App
 
-# --- Import Both Bot Engines and Their Managers ---
-from bot_engine import ArbitrageBot
-from async_bot_engine import AsyncArbitrageBot
-from exchange_manager import ExchangeManager
-from exchange_manager_async import AsyncExchangeManager
-from risk_manager import RiskManager
-from rebalancer import Rebalancer
-from trade_logger import TradeLogger
+def setup_logging():
+    """
+    Your original logging setup function, ensuring logs go to console and file.
+    """
+    logging_config.setup_custom_log_levels()
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
 
-class App(ctk.CTk):
-    def __init__(self, config):
-        super().__init__()
-        self.config = config
-        self.title("Crypto Arbitrage Bot - Professional Edition")
-        self.geometry("1200x750")
+    # Prevent duplicate handlers if this is ever called more than once
+    if logger.hasHandlers():
+        logger.handlers.clear()
 
-        # --- Bot Control State ---
-        self.bot_thread = None
-        self.bot_instance = None
-        self.update_queue = queue.Queue() # Your original queue for structured data
+    log_format = logging.Formatter('%(asctime)s - %(levelname)s - [%(module)s:%(lineno)d] - %(message)s')
+    
+    # File handler from your original code
+    file_handler = RotatingFileHandler('bot.log', maxBytes=2*1024*1024, backupCount=2, mode='w', encoding='utf-8')
+    file_handler.setFormatter(log_format)
+    logger.addHandler(file_handler)
+    
+    # Console handler from your original code
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(log_format)
+    logger.addHandler(console_handler)
+    
+    logging.info("Root logger configured.")
 
-        # --- Layout ---
-        self.grid_columnconfigure(1, weight=1)
-        self.grid_rowconfigure(0, weight=1)
 
-        # --- Your Original Left Panel ---
-        self.left_panel = LeftPanel(self, width=250)
-        self.left_panel.grid(row=0, column=0, padx=(10, 0), pady=10, sticky="ns")
+def get_unified_config() -> dict:
+    """
+    Loads configuration from both config.yaml and .env file and merges them.
+    This replaces the separate config and EXCHANGES dictionaries.
+    """
+    load_dotenv()
+    config = load_config() # Loads from config.yaml
 
-        # --- Your Original Tab View ---
-        self.tab_view = ctk.CTkTabview(self, width=900)
-        self.tab_view.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
-        self.tab_view.add("Live Operations")
-        self.tab_view.add("Analysis")
-
-        # --- Your Original Tabs ---
-        self.live_ops_tab = LiveOpsTab(self.tab_view.tab("Live Operations"))
-        self.analysis_tab = AnalysisTab(self.tab_view.tab("Analysis"))
-
-        # --- NEW: Add the Engine Selector and Buttons to your Left Panel ---
-        self.add_engine_controls()
-
-        # Start the queue processor to listen for updates from the bot
-        self.process_queue()
-
-    def add_engine_controls(self):
-        """Injects the new controls into your existing left panel."""
-        engine_frame = ctk.CTkFrame(self.left_panel)
-        engine_frame.pack(pady=20, padx=10, fill="x", side="bottom")
-
-        title_label = ctk.CTkLabel(engine_frame, text="Bot Control", font=ctk.CTkFont(size=16, weight="bold"))
-        title_label.pack(pady=(5, 10))
-
-        self.engine_var = ctk.StringVar(value="Async")
-        self.engine_switch = ctk.CTkSwitch(
-            engine_frame, text="Use Async Engine", variable=self.engine_var, 
-            onvalue="Async", offvalue="Regular"
-        )
-        self.engine_switch.pack(pady=10, padx=10)
-
-        self.start_button = ctk.CTkButton(engine_frame, text="Start Bot", command=self.start_bot)
-        self.start_button.pack(pady=10, fill="x", padx=10)
-
-        self.stop_button = ctk.CTkButton(engine_frame, text="Stop Bot", command=self.stop_bot, state="disabled")
-        self.stop_button.pack(pady=5, fill="x", padx=10)
-
-    def start_bot(self):
-        """Starts the selected bot engine in a background thread."""
-        use_async = self.engine_var.get() == "Async"
+    enabled_exchanges_str = os.getenv("ENABLED_EXCHANGES")
+    if not enabled_exchanges_str:
+        raise ConfigError("CRITICAL: ENABLED_EXCHANGES not found in .env file.")
+    
+    enabled_exchanges = [ex.strip().lower() for ex in enabled_exchanges_str.split(',')]
+    
+    config['exchanges'] = {}
+    for ex_id in enabled_exchanges:
+        api_key_var = f"{ex_id.upper()}_TESTNET_API_KEY"
+        secret_var = f"{ex_id.upper()}_TESTNET_SECRET"
+        api_key, api_secret = os.getenv(api_key_var), os.getenv(secret_var)
         
-        try:
-            if use_async:
-                self.live_ops_tab.log_message("[GUI] Initializing ASYNC bot engine...")
-                self.bot_instance = self._create_async_bot()
-                # Async functions must be run within an asyncio event loop
-                thread_target = lambda: asyncio.run(self.bot_instance.run())
-            else:
-                self.live_ops_tab.log_message("[GUI] Initializing REGULAR bot engine...")
-                self.bot_instance = self._create_sync_bot()
-                thread_target = self.bot_instance.run
+        if not api_key or not api_secret:
+            raise ConfigError(f"CRITICAL: Missing API credentials for '{ex_id}'. Check {api_key_var} and {secret_var} in .env file.")
+        
+        # This structure is now used by both sync and async managers
+        exchange_data = {"apiKey": api_key, "secret": api_secret}
+
+        # Special handling for OKX passphrase, as in your original code
+        if ex_id == 'okx':
+            password = os.getenv("OKX_TESTNET_PASSPHRASE")
+            if not password:
+                 raise ConfigError("CRITICAL: OKX requires OKX_TESTNET_PASSPHRASE in .env file.")
+            exchange_data["password"] = password
             
-            self.bot_thread = threading.Thread(target=thread_target, daemon=True)
-            self.bot_thread.start()
+        config["exchanges"][ex_id] = exchange_data
+            
+    return config
 
-            self.start_button.configure(state="disabled")
-            self.stop_button.configure(state="normal")
-            self.engine_switch.configure(state="disabled")
-            self.live_ops_tab.log_message("[GUI] Bot started in background thread.")
 
-        except Exception as e:
-            self.live_ops_tab.log_message(f"[GUI-ERROR] Failed to start bot: {e}", "CRITICAL")
-
-    def stop_bot(self):
-        """Signals the running bot to stop and cleans up."""
-        if self.bot_instance and self.bot_instance.is_running:
-            self.live_ops_tab.log_message("[GUI] Sending stop signal to bot...")
-            # This is the flag both your engines use to stop their loops
-            self.bot_instance.is_running = False 
+if __name__ == "__main__":
+    """
+    The main entry point for the application, restored to your original design.
+    """
+    try:
+        setup_logging()
+        unified_config = get_unified_config()
         
-        # Reset GUI state
-        self.start_button.configure(state="normal")
-        self.stop_button.configure(state="disabled")
-        self.engine_switch.configure(state="normal")
-        self.live_ops_tab.log_message("[GUI] Bot stop signal sent.")
+        # This now correctly calls your GUI app with the single config object it expects
+        app = App(unified_config)
+        app.mainloop()
 
-    def process_queue(self):
-        """
-        Process messages from the bot's update_queue to update the GUI.
-        This handles the structured data your bot sends.
-        """
-        try:
-            while not self.update_queue.empty():
-                message = self.update_queue.get_nowait()
-                msg_type = message.get("type")
-                data = message.get("data")
-
-                # Route the message to the correct GUI component
-                if msg_type == "log": # Simple text log
-                    self.live_ops_tab.log_message(data)
-                elif msg_type == "stats_update":
-                    self.left_panel.update_stats(data)
-                elif msg_type == "portfolio_update":
-                    self.left_panel.update_portfolio(data)
-                elif msg_type == "market_data":
-                     self.live_ops_tab.update_market_data(data)
-                # Add more message types as needed for your GUI
-        finally:
-            self.after(100, self.process_queue) # Check for new messages every 100ms
-
-    def _create_sync_bot(self):
-        """Initializes all components for the synchronous bot."""
-        exchange_manager = ExchangeManager(self.config['exchanges'])
-        risk_manager = RiskManager(self.config, exchange_manager)
-        rebalancer = Rebalancer(self.config, exchange_manager)
-        trade_logger = TradeLogger()
-        # Your original bot expected the update_queue
-        return ArbitrageBot(self.config, exchange_manager, risk_manager, rebalancer, trade_logger, self.update_queue)
-
-    def _create_async_bot(self):
-        """Initializes all components for the asynchronous bot."""
-        exchange_manager = AsyncExchangeManager(self.config)
-        risk_manager = RiskManager(self.config, exchange_manager)
-        rebalancer = Rebalancer(self.config, exchange_manager)
-        trade_logger = TradeLogger()
-        # We need to adapt the async bot to use the same update_queue
-        return AsyncArbitrageBot(self.config, exchange_manager, risk_manager, rebalancer, trade_logger, self.update_queue)
+    except ConfigError as e:
+        # Your original fatal error handling
+        logging.critical(f"Fatal Configuration Error: {e}", exc_info=True)
+        messagebox.showerror("Fatal Configuration Error", str(e))
+    except Exception as e:
+        # Your original fatal error handling
+        logging.critical(f"An unexpected fatal error occurred: {e}", exc_info=True)
+        messagebox.showerror("Unexpected Fatal Error", f"An unrecoverable error occurred:\n\n{e}\n\nCheck bot.log for details.")
     
 # import customtkinter as ctk
 # import threading

@@ -12,12 +12,31 @@ class ExchangeManager:
 
     def __init__(self, exchanges_config: Dict[str, Any]):
         self.logger = logging.getLogger(__name__)
+        self.exchanges_config = exchanges_config
         self.clients: Dict[str, ccxt.Exchange] = {}
-        self.cached_balances: Dict[str, Dict[str, Any]] = {}
-        self.last_balance_fetch_time: Dict[str, float] = {}
-        self.BALANCE_CACHE_DURATION: int = 30
+        # NOTE: No clients are created here. This is now safe.
 
-        self._initialize_clients(exchanges_config)
+    def connect(self):
+        """
+        Creates and connects all exchange clients. This is the new,
+        unsafe part that must be run in a background thread.
+        """
+        self.logger.info("Connecting to exchange clients...")
+        for ex_id, ex_config in self.exchanges_config.items():
+            try:
+                exchange_class = getattr(ccxt, ex_id)
+                client = exchange_class({
+                    'apiKey': ex_config.get('apiKey'),
+                    'secret': ex_config.get('secret'),
+                    'password': ex_config.get('password'),
+                    'options': {'defaultType': 'spot'},
+                })
+                client.set_sandbox_mode(True)
+                self.clients[ex_id] = client
+                self.logger.info(f"Successfully connected to {ex_id} client.")
+            except Exception as e:
+                raise ExchangeInitError(f"Failed to connect to exchange '{ex_id}': {e}")
+    
 
     def _initialize_clients(self, exchanges_config: Dict[str, Any]):
         for ex_name, config_data in exchanges_config.items():

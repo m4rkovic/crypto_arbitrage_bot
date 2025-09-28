@@ -1,3 +1,5 @@
+# gui_application.py
+
 import customtkinter as ctk
 import queue
 import threading
@@ -10,7 +12,7 @@ from typing import Any, Dict, Optional
 from bot_engine import ArbitrageBot
 from async_bot_engine import AsyncArbitrageBot
 
-# --- Import Managers ONLY for the Async Bot ---
+# --- Import Managers for the Async Bot ---
 from exchange_manager_async import AsyncExchangeManager
 from risk_manager import RiskManager
 from rebalancer import Rebalancer
@@ -31,11 +33,11 @@ class QueueHandler(logging.Handler):
 
 class App(ctk.CTk):
     """
-    The final, corrected application class that solves the startup crash.
+    The main application class, correctly structured to prevent startup crashes.
     """
     def __init__(self, config: Dict[str, Any]):
         super().__init__()
-        self.title("Arbitrage Bot Control Center - V3 FINAL")
+        self.title("Arbitrage Bot Control Center - V4 (Stable)")
         self.geometry("1600x900")
         ctk.set_appearance_mode("dark")
         
@@ -43,7 +45,7 @@ class App(ctk.CTk):
         self.update_queue: queue.Queue = queue.Queue()
         self.add_gui_handler_to_logger()
 
-        # THE FIX: The bot instance starts as None. It will only be created
+        # THE FIX: The bot instance starts as None. It is only created
         # inside the background thread AFTER the user clicks "Start".
         self.bot_instance: Optional[Any] = None
         self.bot_thread: Optional[threading.Thread] = None
@@ -57,10 +59,13 @@ class App(ctk.CTk):
 
     def add_gui_handler_to_logger(self):
         queue_handler = QueueHandler(self.update_queue)
+        # Use a simple formatter, as the bot engines will send pre-formatted strings
         queue_handler.setFormatter(logging.Formatter('%(message)s'))
         logging.getLogger().addHandler(queue_handler)
 
     def create_widgets(self):
+        # THE FIX: We pass 'self' (the App instance) to the components,
+        # because the bot does not exist yet.
         self.left_panel = LeftPanel(self, self.config, self.start_bot, self.stop_bot)
         self.left_panel.grid(row=0, column=0, sticky="nsw")
 
@@ -74,32 +79,33 @@ class App(ctk.CTk):
         tab_view.add("Live Operations")
         tab_view.add("Performance Analysis")
 
-        # THE FIX: We pass the main App instance ('self') to the tabs,
-        # not the bot_instance, because the bot does not exist yet.
         self.live_ops_tab = LiveOpsTab(tab_view.tab("Live Operations"), self.config, self)
         self.analysis_tab = AnalysisTab(tab_view.tab("Performance Analysis"), self)
         
         self._add_engine_controls_to_left_panel()
 
     def _add_engine_controls_to_left_panel(self):
+        """Adds the engine selector to your left panel."""
         self.engine_var = ctk.StringVar(value="Async")
         self.engine_switch = ctk.CTkSwitch(
             self.left_panel, text="Use Async Engine", variable=self.engine_var,
             onvalue="Async", offvalue="Regular"
         )
+        # Place it above the start button
         self.engine_switch.pack(pady=(20, 10), padx=10, before=self.left_panel.start_button)
 
     def process_queue(self):
         """Your original, powerful queue processor."""
         try:
-            for _ in range(100):
+            for _ in range(100): # Process up to 100 messages per cycle
                 message = self.update_queue.get_nowait()
-                msg_type, data = message.get("type"), message.get("data")
+                msg_type = message.get("type")
+                data = message.get("data")
+
                 if msg_type == "log":
                     self.live_ops_tab.add_log_message(message.get("level", "INFO"), data)
                 elif msg_type == "stats":
                     self.left_panel.update_stats_display(**data)
-                # ... and all your other message types ...
                 elif msg_type == "initial_portfolio":
                     self.initial_portfolio_snapshot = data
                     if self.analysis_tab: self.analysis_tab.update_portfolio_display(data, self.initial_portfolio_snapshot)
@@ -109,38 +115,52 @@ class App(ctk.CTk):
                 elif msg_type == "market_data":
                     if self.live_ops_tab: self.live_ops_tab.update_market_data_display(data)
                 elif msg_type == "stopped":
-                    if not (self.bot_thread and self.bot_thread.is_alive()): self.stop_bot()
+                    if not (self.bot_thread and self.bot_thread.is_alive()):
+                        self.stop_bot()
         except queue.Empty:
             pass
         finally:
             self.after(100, self.process_queue)
 
     def start_bot(self):
-        """Starts the selected bot engine in a new background thread."""
+        """Your original start logic, adapted for safe threading."""
         self.left_panel.set_status("STARTING...", "cyan")
         try:
             self.params = self.left_panel.get_start_parameters()
             self.config['trading_parameters'].update(self.params)
-            thread_target = self._run_async_bot_in_thread if self.engine_var.get() == "Async" else self._run_sync_bot_in_thread
+
+            if self.engine_var.get() == "Async":
+                thread_target = self._run_async_bot_in_thread
+            else:
+                thread_target = self._run_sync_bot_in_thread
+                
             self.bot_thread = threading.Thread(target=thread_target, daemon=True)
             self.bot_thread.start()
+
             self.left_panel.set_controls_state(False)
             self.engine_switch.configure(state="disabled")
             self.update_runtime_clock()
         except Exception as e:
-            self.live_ops_tab.add_log_message("ERROR", f"Failed to start: {e}")
+            self.live_ops_tab.add_log_message("ERROR", f"Failed to get start parameters: {e}")
             self.left_panel.set_status("ERROR", "red")
 
     def stop_bot(self):
-        """Your original stop logic, adapted for consistency."""
+        """Your original stop logic."""
         self.left_panel.set_status("STOPPING...", "orange")
         if self.bot_instance:
+             # Check for 'running' (sync) or 'is_running' (async)
              is_running_attr = 'is_running' if hasattr(self.bot_instance, 'is_running') else 'running'
              if getattr(self.bot_instance, is_running_attr, False):
                 # Use the bot's own stop method
-                self.bot_instance.stop() if hasattr(self.bot_instance, 'stop') else setattr(self.bot_instance, is_running_attr, False)
+                if hasattr(self.bot_instance, 'stop'):
+                    self.bot_instance.stop()
+                else: # Fallback for async bot
+                    setattr(self.bot_instance, is_running_attr, False)
+
         if self.bot_thread and self.bot_thread.is_alive():
+            logging.info("Waiting for bot thread to terminate...")
             self.bot_thread.join(timeout=10)
+        
         self.left_panel.set_controls_state(True)
         self.engine_switch.configure(state="normal")
         self.left_panel.set_status("STOPPED", "red")
@@ -159,7 +179,7 @@ class App(ctk.CTk):
         """Correctly initializes and runs your original synchronous bot."""
         try:
             self.left_panel.set_status("RUNNING", "green")
-            # The bot is created HERE, in the background thread.
+            # The bot is created HERE, in the background, matching your original __init__
             self.bot_instance = ArbitrageBot(self.config, self.config['exchanges'], self.update_queue)
             self.bot_instance.run(self.params['selected_symbols'])
         except Exception as e:
@@ -171,11 +191,12 @@ class App(ctk.CTk):
         """Correctly initializes and runs the new asynchronous bot."""
         try:
             self.left_panel.set_status("RUNNING (Async)", "green")
-            # The bot and its managers are created HERE, in the background thread.
+            # The bot and managers are created HERE, in the background.
             exchange_manager = AsyncExchangeManager(self.config)
             risk_manager = RiskManager(self.config, exchange_manager)
             rebalancer = Rebalancer(self.config, exchange_manager)
             trade_logger = TradeLogger()
+
             self.bot_instance = AsyncArbitrageBot(
                 self.config, exchange_manager, risk_manager,
                 rebalancer, trade_logger, self.update_queue
@@ -185,7 +206,7 @@ class App(ctk.CTk):
             logging.critical(f"Fatal error in async bot thread: {e}", exc_info=True)
             self.update_queue.put({"type": "critical_error", "data": f"Async bot thread crashed: {e}"})
             self.left_panel.set_status("CRASHED", "red")
-            
+
 # # gui_application.py
 
 # import customtkinter as ctk
