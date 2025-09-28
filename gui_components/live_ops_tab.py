@@ -11,10 +11,10 @@ class LiveOpsTab(ctk.CTkFrame):
     The "Live Operations" tab.
     Contains the live market scan, recent opportunity history, and the main log output.
     """
-    def __init__(self, master, config: Dict[str, Any], bot: Optional[ArbitrageBot]):
+    def __init__(self, master, config: Dict[str, Any], app: Optional[ArbitrageBot]):
         super().__init__(master, fg_color="transparent")
         self.config = config
-        self.bot = bot
+        self.app = app
         self.market_data_labels: Dict[str, Dict[str, ctk.CTkLabel]] = {}
         
         # --- NEW: Store the last price to detect changes ---

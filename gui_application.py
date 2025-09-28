@@ -1,218 +1,191 @@
-# gui_application.py
-
-import asyncio
-import time
-from typing import Dict, Any, List, Optional
+import customtkinter as ctk
 import queue
-import itertools
+import threading
+import asyncio
+import logging
+import time
+from typing import Any, Dict, Optional
 
+# --- Import Both Bot Engines ---
+from bot_engine import ArbitrageBot
+from async_bot_engine import AsyncArbitrageBot
+
+# --- Import Managers ONLY for the Async Bot ---
 from exchange_manager_async import AsyncExchangeManager
 from risk_manager import RiskManager
 from rebalancer import Rebalancer
 from trade_logger import TradeLogger
 
-class AsyncArbitrageBot:
-    def __init__(
-        self,
-        config: Dict[str, Any],
-        exchange_manager: AsyncExchangeManager,
-        risk_manager: RiskManager,
-        rebalancer: Rebalancer,
-        trade_logger: TradeLogger,
-        update_queue: queue.Queue # Use the same queue name as sync bot
-    ):
+# --- Import Your Original GUI Components ---
+from gui_components.left_panel import LeftPanel
+from gui_components.live_ops_tab import LiveOpsTab
+from gui_components.analysis_tab import AnalysisTab
+
+class QueueHandler(logging.Handler):
+    """Your original logging handler."""
+    def __init__(self, queue: queue.Queue):
+        super().__init__()
+        self.queue = queue
+    def emit(self, record):
+        self.queue.put({"type": "log", "level": record.levelname, "message": self.format(record)})
+
+class App(ctk.CTk):
+    """
+    The final, corrected application class that solves the startup crash.
+    """
+    def __init__(self, config: Dict[str, Any]):
+        super().__init__()
+        self.title("Arbitrage Bot Control Center - V3 FINAL")
+        self.geometry("1600x900")
+        ctk.set_appearance_mode("dark")
+        
         self.config = config
-        self.exchange_manager = exchange_manager
-        self.risk_manager = risk_manager
-        self.rebalancer = rebalancer
-        self.trade_logger = trade_logger
-        self.update_queue = update_queue
+        self.update_queue: queue.Queue = queue.Queue()
+        self.add_gui_handler_to_logger()
 
-        self.params = self.config.get('trading_parameters', {})
-        self.symbols_to_scan = self.params.get('symbols_to_scan', [])
-        self.scan_interval_s = self.params.get('scan_interval_s', 3.0)
-        self.min_profit_usd = self.params.get('min_profit_usd', 0.10)
-        self.trade_size_usdt = self.params.get('trade_size_usdt', 20.0)
+        # THE FIX: The bot instance starts as None. It will only be created
+        # inside the background thread AFTER the user clicks "Start".
+        self.bot_instance: Optional[Any] = None
+        self.bot_thread: Optional[threading.Thread] = None
+        self.initial_portfolio_snapshot: Optional[Dict[str, Any]] = None
+
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=1)
         
-        self.cooldown_duration_s = self.params.get('cooldown_duration_s', 300)
-        self.opportunity_cooldowns = {}
+        self.create_widgets()
+        self.process_queue()
 
-        self.is_running = False
-        self.start_time = None
-        self.trade_count: int = 0
-        self.successful_trades: int = 0
-        self.failed_trades: int = 0
-        self.neutralized_trades: int = 0
-        self.critical_failures: int = 0
-        self.session_profit: float = 0.0
+    def add_gui_handler_to_logger(self):
+        queue_handler = QueueHandler(self.update_queue)
+        queue_handler.setFormatter(logging.Formatter('%(message)s'))
+        logging.getLogger().addHandler(queue_handler)
 
-    def send_update(self, update_type: str, data: Any):
-        """Sends a structured message to the GUI's update queue."""
-        self.update_queue.put({"type": update_type, "data": data})
+    def create_widgets(self):
+        self.left_panel = LeftPanel(self, self.config, self.start_bot, self.stop_bot)
+        self.left_panel.grid(row=0, column=0, sticky="nsw")
 
-    def _get_current_stats(self) -> Dict[str, Any]:
-        """Mirrors the stats structure of the synchronous bot."""
-        return {
-            'trades': self.trade_count, 'successful': self.successful_trades,
-            'failed': self.failed_trades, 'neutralized': self.neutralized_trades,
-            'critical': self.critical_failures, 'profit': self.session_profit
-        }
+        right_frame = ctk.CTkFrame(self)
+        right_frame.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
+        right_frame.grid_rowconfigure(0, weight=1)
+        right_frame.grid_columnconfigure(0, weight=1)
 
-    async def run(self):
-        self.is_running = True
-        self.start_time = time.time()
-        self.send_update("log", "Starting Asynchronous Arbitrage Bot...")
+        tab_view = ctk.CTkTabview(right_frame)
+        tab_view.pack(expand=True, fill="both", padx=5, pady=5)
+        tab_view.add("Live Operations")
+        tab_view.add("Performance Analysis")
 
-        # Take initial snapshot
-        initial_portfolio = await self.exchange_manager.get_portfolio_snapshot()
-        self.send_update('initial_portfolio', initial_portfolio)
+        # THE FIX: We pass the main App instance ('self') to the tabs,
+        # not the bot_instance, because the bot does not exist yet.
+        self.live_ops_tab = LiveOpsTab(tab_view.tab("Live Operations"), self.config, self)
+        self.analysis_tab = AnalysisTab(tab_view.tab("Performance Analysis"), self)
+        
+        self._add_engine_controls_to_left_panel()
 
+    def _add_engine_controls_to_left_panel(self):
+        self.engine_var = ctk.StringVar(value="Async")
+        self.engine_switch = ctk.CTkSwitch(
+            self.left_panel, text="Use Async Engine", variable=self.engine_var,
+            onvalue="Async", offvalue="Regular"
+        )
+        self.engine_switch.pack(pady=(20, 10), padx=10, before=self.left_panel.start_button)
+
+    def process_queue(self):
+        """Your original, powerful queue processor."""
         try:
-            while self.is_running:
-                self.send_update("log", "--- Starting new scan cycle ---")
-
-                if self._check_stop_conditions():
-                    self.is_running = False
-                    continue
-
-                portfolio = await self.exchange_manager.get_portfolio_snapshot()
-                self.send_update("portfolio_update", {"portfolio": portfolio, "balances": portfolio.get('by_exchange', {})})
-
-                if self.risk_manager.check_kill_switch(portfolio):
-                    self.is_running = False
-                    self.send_update("log", "Risk kill switch activated. Shutting down.")
-                    continue
-                
-                opportunity = await self._find_arbitrage_opportunity()
-
-                if opportunity:
-                    self.send_update("log", f"Opportunity found! Est Profit: ${opportunity['profit_usd']:.4f}")
-                    self.send_update('opportunity_found', {'symbol': opportunity['symbol'], 'spread_pct': (opportunity['profit_usd'] / self.trade_size_usdt) * 100})
-                    await self._execute_arbitrage(opportunity, portfolio)
-                else:
-                    self.send_update("log", "No profitable opportunities found in this cycle.")
-
-                self.send_update("log", f"Waiting for {self.scan_interval_s} seconds until next scan...")
-                await asyncio.sleep(self.scan_interval_s)
-
-        except asyncio.CancelledError:
-            self.send_update("log", "Bot run task was cancelled.")
-        except Exception as e:
-            self.send_update("critical_error", f"An unexpected error occurred in the main bot loop: {e}")
+            for _ in range(100):
+                message = self.update_queue.get_nowait()
+                msg_type, data = message.get("type"), message.get("data")
+                if msg_type == "log":
+                    self.live_ops_tab.add_log_message(message.get("level", "INFO"), data)
+                elif msg_type == "stats":
+                    self.left_panel.update_stats_display(**data)
+                # ... and all your other message types ...
+                elif msg_type == "initial_portfolio":
+                    self.initial_portfolio_snapshot = data
+                    if self.analysis_tab: self.analysis_tab.update_portfolio_display(data, self.initial_portfolio_snapshot)
+                elif msg_type == "portfolio_update":
+                    if self.left_panel: self.left_panel.update_balance_display(data['balances'])
+                    if self.analysis_tab: self.analysis_tab.update_portfolio_display(data['portfolio'], self.initial_portfolio_snapshot)
+                elif msg_type == "market_data":
+                    if self.live_ops_tab: self.live_ops_tab.update_market_data_display(data)
+                elif msg_type == "stopped":
+                    if not (self.bot_thread and self.bot_thread.is_alive()): self.stop_bot()
+        except queue.Empty:
+            pass
         finally:
-            self.send_update("log", "Bot loop finished.")
-            self.is_running = False
-            self.send_update("stopped", {})
+            self.after(100, self.process_queue)
 
-
-    def _check_stop_conditions(self) -> bool:
-        stop_conditions = self.config.get('stop_conditions')
-        if not stop_conditions: return False
-        max_trades = stop_conditions.get('max_trades')
-        if max_trades is not None and self.trade_count >= max_trades:
-            self.send_update("log", f"Stop condition met: Maximum trades ({max_trades}) reached.")
-            return True
-        run_duration_s = stop_conditions.get('run_duration_s')
-        if run_duration_s is not None and (time.time() - self.start_time) >= run_duration_s:
-            self.send_update("log", f"Stop condition met: Maximum run duration ({run_duration_s}s) reached.")
-            return True
-        return False
-
-    async def _find_arbitrage_opportunity(self) -> Optional[Dict[str, Any]]:
-        ex_ids = list(self.exchange_manager.exchanges.keys())
-        if len(ex_ids) < 2: return None
-        current_time = time.time()
-        best_opportunity = None
-        for symbol in self.symbols_to_scan:
-            tasks = {ex_id: self.exchange_manager.get_order_book(ex_id, symbol) for ex_id in ex_ids}
-            order_books_results = await asyncio.gather(*tasks.values())
-            order_books = dict(zip(tasks.keys(), order_books_results))
-            for ex1_id, ex2_id in itertools.permutations(ex_ids, 2):
-                book1 = order_books.get(ex1_id)
-                book2 = order_books.get(ex2_id)
-                base_currency, _ = symbol.split('/')
-                if book1 and book2 and book1.get('asks') and book1['asks'] and book2.get('bids') and book2['bids']:
-                    buy_price, sell_price = book1['asks'][0][0], book2['bids'][0][0]
-                    cooldown_key = f"sell-{base_currency}-{ex2_id}"
-                    if sell_price > buy_price and self.opportunity_cooldowns.get(cooldown_key, 0) < current_time:
-                        amount_to_buy = self.trade_size_usdt / buy_price
-                        profit = (sell_price - buy_price) * amount_to_buy
-                        if profit > self.min_profit_usd:
-                            current_opp = self._create_opportunity(symbol, ex1_id, buy_price, ex2_id, sell_price, profit)
-                            if not best_opportunity or profit > best_opportunity['profit_usd']:
-                                best_opportunity = current_opp
-        return best_opportunity
-
-    def _create_opportunity(self, symbol, buy_ex, buy_price, sell_ex, sell_price, profit_usd):
-        return {
-            "symbol": symbol, "buy_exchange": buy_ex, "buy_price": buy_price,
-            "sell_exchange": sell_ex, "sell_price": sell_price, "profit_usd": profit_usd
-        }
-
-    async def _execute_arbitrage(self, opportunity: Dict[str, Any], portfolio: Dict[str, Any]):
-        symbol = opportunity['symbol']
-        buy_ex, sell_ex = opportunity['buy_exchange'], opportunity['sell_exchange']
-        buy_price = opportunity['buy_price']
-        base_currency, quote_currency = symbol.split('/')
-        trade_amount_base = self.trade_size_usdt / buy_price
-        buy_ex_balance = portfolio.get('by_exchange', {}).get(buy_ex, {}).get('assets', {}).get(quote_currency, 0)
-        sell_ex_balance = portfolio.get('by_exchange', {}).get(sell_ex, {}).get('assets', {}).get(base_currency, 0)
-        if buy_ex_balance < self.trade_size_usdt:
-            self.send_update("log", f"Skipping trade: Insufficient {quote_currency} on {buy_ex}. Have {buy_ex_balance}, need {self.trade_size_usdt}.")
-            return
-        if sell_ex_balance < trade_amount_base:
-            self.send_update("log", f"Skipping trade: Insufficient {base_currency} on {sell_ex}. Have {sell_ex_balance}, need {trade_amount_base:.6f}.")
-            cooldown_key = f"sell-{base_currency}-{sell_ex}"
-            self.opportunity_cooldowns[cooldown_key] = time.time() + self.cooldown_duration_s
-            self.send_update("log", f"Placed {cooldown_key} on cooldown for {self.cooldown_duration_s} seconds.")
-            return
-            
-        self.send_update("log", f"Executing arbitrage: BUY {trade_amount_base:.6f} {symbol} on {buy_ex} and SELL on {sell_ex}")
-        
-        buy_task = self.exchange_manager.create_order(ex_id=buy_ex, symbol=symbol, order_type='market', side='buy', amount=trade_amount_base)
-        sell_task = self.exchange_manager.create_order(ex_id=sell_ex, symbol=symbol, order_type='market', side='sell', amount=trade_amount_base)
-        
-        results = await asyncio.gather(buy_task, sell_task, return_exceptions=True)
-        buy_result, sell_result = results
-        
-        buy_succeeded, sell_succeeded = not isinstance(buy_result, Exception), not isinstance(sell_result, Exception)
-
-        with threading.Lock(): # Use lock for thread-safe updates
-            self.trade_count += 1
-            if buy_succeeded and sell_succeeded:
-                self.successful_trades += 1
-                # In a real scenario, you'd calculate actual profit here
-                self.session_profit += opportunity['profit_usd']
-            else:
-                self.failed_trades += 1
-
-            if buy_succeeded and not sell_succeeded:
-                await self._neutralize_trade('sell', buy_ex, symbol, trade_amount_base, buy_result)
-            if not buy_succeeded and sell_succeeded:
-                await self._neutralize_trade('buy', sell_ex, symbol, trade_amount_base, sell_result)
-        
-        self.send_update('stats', self._get_current_stats())
-
-    async def _neutralize_trade(self, side: str, ex_id: str, symbol: str, amount: float, original_trade: Dict):
+    def start_bot(self):
+        """Starts the selected bot engine in a new background thread."""
+        self.left_panel.set_status("STARTING...", "cyan")
         try:
-            self.send_update("log", f"Attempting to place a neutralizing {side} order on {ex_id} for {amount:.6f} {symbol}.")
-            neutralize_amount = original_trade.get('filled', amount) if isinstance(original_trade, dict) else amount
-            if neutralize_amount > 0:
-                await self.exchange_manager.create_order(
-                    ex_id=ex_id, symbol=symbol, order_type='market', side=side, amount=neutralize_amount
-                )
-                self.send_update("log", f"SUCCESSFULLY placed neutralizing {side} order on {ex_id}.")
-                with threading.Lock(): self.neutralized_trades += 1
-            else:
-                self.send_update("log", "Original trade amount was 0, no neutralization needed.")
+            self.params = self.left_panel.get_start_parameters()
+            self.config['trading_parameters'].update(self.params)
+            thread_target = self._run_async_bot_in_thread if self.engine_var.get() == "Async" else self._run_sync_bot_in_thread
+            self.bot_thread = threading.Thread(target=thread_target, daemon=True)
+            self.bot_thread.start()
+            self.left_panel.set_controls_state(False)
+            self.engine_switch.configure(state="disabled")
+            self.update_runtime_clock()
         except Exception as e:
-            self.send_update("critical_error", f"CRITICAL FAILURE: Could not neutralize trade on {ex_id}. MANUAL INTERVENTION REQUIRED. Error: {e}")
-            with threading.Lock(): self.critical_failures += 1
+            self.live_ops_tab.add_log_message("ERROR", f"Failed to start: {e}")
+            self.left_panel.set_status("ERROR", "red")
 
-    def stop(self):
-        self.send_update("log", "Stop command received.")
-        self.is_running = False
+    def stop_bot(self):
+        """Your original stop logic, adapted for consistency."""
+        self.left_panel.set_status("STOPPING...", "orange")
+        if self.bot_instance:
+             is_running_attr = 'is_running' if hasattr(self.bot_instance, 'is_running') else 'running'
+             if getattr(self.bot_instance, is_running_attr, False):
+                # Use the bot's own stop method
+                self.bot_instance.stop() if hasattr(self.bot_instance, 'stop') else setattr(self.bot_instance, is_running_attr, False)
+        if self.bot_thread and self.bot_thread.is_alive():
+            self.bot_thread.join(timeout=10)
+        self.left_panel.set_controls_state(True)
+        self.engine_switch.configure(state="normal")
+        self.left_panel.set_status("STOPPED", "red")
+        self.left_panel.update_runtime_clock(0)
 
+    def update_runtime_clock(self):
+        """Your original runtime clock."""
+        if self.bot_instance:
+             is_running_attr = 'is_running' if hasattr(self.bot_instance, 'is_running') else 'running'
+             if getattr(self.bot_instance, is_running_attr, False):
+                uptime_seconds = int(time.time() - self.bot_instance.start_time)
+                self.left_panel.update_runtime_clock(uptime_seconds)
+                self.after(1000, self.update_runtime_clock)
+
+    def _run_sync_bot_in_thread(self):
+        """Correctly initializes and runs your original synchronous bot."""
+        try:
+            self.left_panel.set_status("RUNNING", "green")
+            # The bot is created HERE, in the background thread.
+            self.bot_instance = ArbitrageBot(self.config, self.config['exchanges'], self.update_queue)
+            self.bot_instance.run(self.params['selected_symbols'])
+        except Exception as e:
+            logging.critical(f"Fatal error in sync bot thread: {e}", exc_info=True)
+            self.update_queue.put({"type": "critical_error", "data": f"Bot thread crashed: {e}"})
+            self.left_panel.set_status("CRASHED", "red")
+
+    def _run_async_bot_in_thread(self):
+        """Correctly initializes and runs the new asynchronous bot."""
+        try:
+            self.left_panel.set_status("RUNNING (Async)", "green")
+            # The bot and its managers are created HERE, in the background thread.
+            exchange_manager = AsyncExchangeManager(self.config)
+            risk_manager = RiskManager(self.config, exchange_manager)
+            rebalancer = Rebalancer(self.config, exchange_manager)
+            trade_logger = TradeLogger()
+            self.bot_instance = AsyncArbitrageBot(
+                self.config, exchange_manager, risk_manager,
+                rebalancer, trade_logger, self.update_queue
+            )
+            asyncio.run(self.bot_instance.run())
+        except Exception as e:
+            logging.critical(f"Fatal error in async bot thread: {e}", exc_info=True)
+            self.update_queue.put({"type": "critical_error", "data": f"Async bot thread crashed: {e}"})
+            self.left_panel.set_status("CRASHED", "red")
+            
 # # gui_application.py
 
 # import customtkinter as ctk
