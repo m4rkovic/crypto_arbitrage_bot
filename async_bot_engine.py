@@ -30,18 +30,12 @@ class AsyncArbitrageBot:
         self.trade_logger = trade_logger # Fixed the trailing comma
         self.log_queue = log_queue
 
-        # --- Bot Parameters ---
         self.params = self.config.get('trading_parameters', {})
         self.symbols_to_scan = self.params.get('symbols_to_scan', [])
         self.scan_interval_s = self.params.get('scan_interval_s', 5.0)
         self.min_profit_usd = self.params.get('min_profit_usd', 0.10)
         self.trade_size_usdt = self.params.get('trade_size_usdt', 20.0)
-        
-        # --- Cooldown Logic ---
-        self.cooldown_duration_s = self.params.get('cooldown_duration_s', 300) # 5 minutes default
-        self.opportunity_cooldowns = {}
 
-        # --- Bot State ---
         self.is_running = False
         self.start_time = None
         self.trades_executed = 0
@@ -65,7 +59,11 @@ class AsyncArbitrageBot:
                     continue
 
                 portfolio = await self.exchange_manager.get_portfolio_snapshot()
+<<<<<<< HEAD
                 self._log(f"Current Portfolio Value: ${portfolio.get('total_usd_value', 0.0):.2f}")
+=======
+                logging.info(f"Current Portfolio Value: ${portfolio['total_usd_value']:.2f}")
+>>>>>>> parent of 4f8cb2b (Update before gui integration)
 
                 if self.risk_manager.check_kill_switch(portfolio):
                     self.is_running = False
@@ -76,7 +74,13 @@ class AsyncArbitrageBot:
 
                 if opportunities:
                     best_opportunity = opportunities[0]
+<<<<<<< HEAD
                     self._log(f"Profitable opportunity found: Expect ${best_opportunity['profit_usd']:.4f} profit on a ${self.trade_size_usdt} trade.")
+=======
+                    logging.info(f"Profitable opportunity found: Expect ${best_opportunity['profit_usd']:.4f} profit on a ${self.trade_size_usdt} trade.")
+                    
+                    # Pass the current portfolio for pre-trade checks
+>>>>>>> parent of 4f8cb2b (Update before gui integration)
                     await self._execute_arbitrage(best_opportunity, portfolio)
                 else:
                     self._log("No profitable opportunities found in this cycle.")
@@ -95,7 +99,8 @@ class AsyncArbitrageBot:
 
     def _check_stop_conditions(self) -> bool:
         stop_conditions = self.config.get('stop_conditions')
-        if not stop_conditions: return False
+        if not stop_conditions:
+            return False
 
         max_trades = stop_conditions.get('max_trades')
         if max_trades is not None and self.trades_executed >= max_trades:
@@ -103,23 +108,24 @@ class AsyncArbitrageBot:
             return True
 
         run_duration_s = stop_conditions.get('run_duration_s')
+<<<<<<< HEAD
         if run_duration_s is not None and (time.time() - self.start_time) >= run_duration_s:
             self._log(f"Stop condition met: Maximum run duration ({run_duration_s}s) reached.")
             return True
+=======
+        if run_duration_s is not None:
+            elapsed_time = time.time() - self.start_time
+            if elapsed_time >= run_duration_s:
+                logging.info(f"Stop condition met: Maximum run duration ({run_duration_s}s) reached.")
+                return True
+>>>>>>> parent of 4f8cb2b (Update before gui integration)
         
         return False
 
     async def _scan_for_opportunities(self) -> List[Dict[str, Any]]:
-        """
-        Scans all symbols across all exchanges to find potential arbitrage
-        opportunities. Returns a list of profitable opportunities, sorted.
-        """
         opportunities = []
         ex_ids = list(self.exchange_manager.exchanges.keys())
-        if len(ex_ids) < 2:
-            return []
-
-        current_time = time.time()
+        if len(ex_ids) < 2: return []
 
         for symbol in self.symbols_to_scan:
             tasks = {ex_id: self.exchange_manager.get_order_book(ex_id, symbol) for ex_id in ex_ids}
@@ -130,38 +136,38 @@ class AsyncArbitrageBot:
                 for j in range(i + 1, len(ex_ids)):
                     ex1_id, ex2_id = ex_ids[i], ex_ids[j]
                     book1, book2 = order_books.get(ex1_id), order_books.get(ex2_id)
-                    base_currency, _ = symbol.split('/')
 
-                    # Opportunity: Buy on ex1, Sell on ex2
-                    if book1 and book2 and book1.get('asks') and book1['asks'] and book2.get('bids') and book2['bids']:
-                        buy_price, sell_price = book1['asks'][0][0], book2['bids'][0][0]
-                        cooldown_key = f"sell-{base_currency}-{ex2_id}"
-
-                        if sell_price > buy_price and self.opportunity_cooldowns.get(cooldown_key, 0) < current_time:
-                            amount_to_buy = self.trade_size_usdt / buy_price
-                            profit = (sell_price - buy_price) * amount_to_buy
-                            if profit > self.min_profit_usd:
-                                opportunities.append({
-                                    "symbol": symbol, "profit_usd": profit,
-                                    "buy_exchange": ex1_id, "buy_price": buy_price,
-                                    "sell_exchange": ex2_id, "sell_price": sell_price,
-                                })
+                    if not book1 or not book2 or not book1.get('asks') or not book1['asks'] or not book2.get('bids') or not book2['bids']:
+                        continue
                     
-                    # Opportunity: Buy on ex2, Sell on ex1
-                    if book1 and book2 and book2.get('asks') and book2['asks'] and book1.get('bids') and book1['bids']:
-                        buy_price, sell_price = book2['asks'][0][0], book1['bids'][0][0]
-                        cooldown_key = f"sell-{base_currency}-{ex1_id}"
-
-                        if sell_price > buy_price and self.opportunity_cooldowns.get(cooldown_key, 0) < current_time:
-                            amount_to_buy = self.trade_size_usdt / buy_price
-                            profit = (sell_price - buy_price) * amount_to_buy
-                            if profit > self.min_profit_usd:
-                                opportunities.append({
-                                    "symbol": symbol, "profit_usd": profit,
-                                    "buy_exchange": ex2_id, "buy_price": buy_price,
-                                    "sell_exchange": ex1_id, "sell_price": sell_price,
-                                })
-
+                    buy_price = book1['asks'][0][0]
+                    sell_price = book2['bids'][0][0]
+                    
+                    if sell_price > buy_price:
+                        amount_to_buy = self.trade_size_usdt / buy_price
+                        gross_profit_usd = (sell_price - buy_price) * amount_to_buy
+                        if gross_profit_usd > self.min_profit_usd:
+                            opportunities.append({
+                                "symbol": symbol, "profit_usd": gross_profit_usd,
+                                "buy_exchange": ex1_id, "buy_price": buy_price,
+                                "sell_exchange": ex2_id, "sell_price": sell_price,
+                            })
+                    
+                    if not book2.get('asks') or not book2['asks'] or not book1.get('bids') or not book1['bids']:
+                        continue
+                        
+                    buy_price = book2['asks'][0][0]
+                    sell_price = book1['bids'][0][0]
+                    
+                    if sell_price > buy_price:
+                        amount_to_buy = self.trade_size_usdt / buy_price
+                        gross_profit_usd = (sell_price - buy_price) * amount_to_buy
+                        if gross_profit_usd > self.min_profit_usd:
+                            opportunities.append({
+                                "symbol": symbol, "profit_usd": gross_profit_usd,
+                                "buy_exchange": ex2_id, "buy_price": buy_price,
+                                "sell_exchange": ex1_id, "sell_price": sell_price,
+                            })
         return sorted(opportunities, key=lambda x: x['profit_usd'], reverse=True)
 
 
@@ -178,17 +184,21 @@ class AsyncArbitrageBot:
         trade_amount_base = self.trade_size_usdt / buy_price
         
         # --- 1. Pre-Trade Balance Check ---
-        buy_ex_balance = portfolio.get('by_exchange', {}).get(buy_ex, {}).get('assets', {}).get(quote_currency, 0)
-        sell_ex_balance = portfolio.get('by_exchange', {}).get(sell_ex, {}).get('assets', {}).get(base_currency, 0)
+        buy_ex_balance = portfolio['by_exchange'].get(buy_ex, {}).get('assets', {}).get(quote_currency, 0)
+        sell_ex_balance = portfolio['by_exchange'].get(sell_ex, {}).get('assets', {}).get(base_currency, 0)
 
         if buy_ex_balance < self.trade_size_usdt:
             self._log(f"Skipping trade: Insufficient {quote_currency} on {buy_ex}. Have {buy_ex_balance}, need {self.trade_size_usdt}.", "WARNING")
             return
         if sell_ex_balance < trade_amount_base:
+<<<<<<< HEAD
             self._log(f"Skipping trade: Insufficient {base_currency} on {sell_ex}. Have {sell_ex_balance}, need {trade_amount_base:.6f}.", "WARNING")
             cooldown_key = f"sell-{base_currency}-{sell_ex}"
             self.opportunity_cooldowns[cooldown_key] = time.time() + self.cooldown_duration_s
             self._log(f"Placed {cooldown_key} on cooldown for {self.cooldown_duration_s} seconds.")
+=======
+            logging.warning(f"Skipping trade: Insufficient {base_currency} on {sell_ex}. Have {sell_ex_balance}, need {trade_amount_base:.6f}.")
+>>>>>>> parent of 4f8cb2b (Update before gui integration)
             return
             
         self._log(f"Executing arbitrage: BUY {trade_amount_base:.6f} {symbol} on {buy_ex} and SELL on {sell_ex}")
@@ -233,14 +243,21 @@ class AsyncArbitrageBot:
         Places a reverse market order to neutralize a partially failed trade.
         """
         try:
+<<<<<<< HEAD
             self._log(f"Attempting to place a neutralizing {side} order on {ex_id} for {amount:.6f} {symbol}.")
             neutralize_amount = original_trade.get('filled', amount) if isinstance(original_trade, dict) else amount
+=======
+            logging.info(f"Attempting to place a neutralizing {side} order on {ex_id} for {amount:.6f} {symbol}.")
+            # We use the 'filled' amount from the original trade if available, otherwise fall back to intended amount
+            neutralize_amount = original_trade.get('filled', amount)
+>>>>>>> parent of 4f8cb2b (Update before gui integration)
             if neutralize_amount > 0:
                 await self.exchange_manager.create_order(
                     ex_id=ex_id, symbol=symbol, order_type='market', side=side, amount=neutralize_amount
                 )
                 self._log(f"SUCCESSFULLY placed neutralizing {side} order on {ex_id}.", "CRITICAL")
             else:
+<<<<<<< HEAD
                 self._log("Original trade amount was 0, no neutralization needed.", "WARNING")
         except Exception as e:
             self._log(f"CRITICAL FAILURE: Could not neutralize trade on {ex_id}. MANUAL INTERVENTION REQUIRED. Error: {e}", "ERROR")
@@ -249,3 +266,9 @@ class AsyncArbitrageBot:
         """Stops the bot's run loop."""
         self._log("Stop command received.")
         self.is_running = False
+=======
+                logging.warning(f"Original trade amount was 0, no neutralization needed.")
+        except Exception as e:
+            logging.error(f"CRITICAL FAILURE: Could not neutralize trade on {ex_id}. MANUAL INTERVENTION REQUIRED. Error: {e}")
+
+>>>>>>> parent of 4f8cb2b (Update before gui integration)
