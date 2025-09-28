@@ -212,30 +212,31 @@ class RiskManager:
     # -------------------------
     # Kill switch
     # -------------------------
-    def check_kill_switch(self) -> bool:
+
+    def check_kill_switch(self, portfolio: dict) -> bool:
         """
-        If total USDT portfolio < configured threshold -> return True (kill).
-        If threshold <= 0 -> disabled.
+        If total portfolio value < configured threshold -> return True (kill).
+        This version accepts the portfolio snapshot as an argument.
         """
         try:
+            # Assumes self.risk_config is available from __init__
             threshold = float(self.risk_config.get("balance_kill_switch_usd", 0) or 0)
             if threshold <= 0:
+                return False  # Kill switch is disabled in the config.
+
+            current_value = portfolio.get('total_usd_value', 0.0)
+
+            if current_value <= 0:
+                self.logger.warning("Cannot evaluate kill switch: portfolio value is zero or missing.")
                 return False
 
-            # ensure portfolio value is up-to-date
-            if not self.total_portfolio_value_usd:
-                self._update_total_portfolio_value()
-
-            if self.total_portfolio_value_usd <= 0:
-                self.logger.warning("Cannot evaluate kill switch: unknown portfolio value.")
-                return False
-
-            if self.total_portfolio_value_usd < threshold:
+            if current_value < threshold:
                 self.logger.critical(
-                    f"KILL SWITCH: Total USDT (${self.total_portfolio_value_usd:,.2f}) below threshold ${threshold}."
+                    f"KILL SWITCH: Total portfolio value (${current_value:,.2f}) is below the threshold of ${threshold:,.2f}."
                 )
                 return True
-            return False
+            
+            return False  # All clear.
         except Exception as e:
             self.logger.error(f"Error checking kill switch: {e}", exc_info=True)
             return False
