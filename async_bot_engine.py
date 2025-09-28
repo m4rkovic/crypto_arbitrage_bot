@@ -1,7 +1,8 @@
 import asyncio
-import logging
+# import logging <- This is the only line removed
 import time
 from typing import Dict, Any, List, Optional
+import queue # Added for type hinting
 
 from exchange_manager_async import AsyncExchangeManager
 from risk_manager import RiskManager
@@ -19,13 +20,15 @@ class AsyncArbitrageBot:
         exchange_manager: AsyncExchangeManager,
         risk_manager: RiskManager,
         rebalancer: Rebalancer,
-        trade_logger: TradeLogger
+        trade_logger: TradeLogger,
+        log_queue: queue.Queue
     ):
         self.config = config
         self.exchange_manager = exchange_manager
         self.risk_manager = risk_manager
         self.rebalancer = rebalancer
-        self.trade_logger = trade_logger
+        self.trade_logger = trade_logger # Fixed the trailing comma
+        self.log_queue = log_queue
 
         # --- Bot Parameters ---
         self.params = self.config.get('trading_parameters', {})
@@ -43,14 +46,18 @@ class AsyncArbitrageBot:
         self.start_time = None
         self.trades_executed = 0
 
+    def _log(self, message: str, level: str = "INFO"):
+        """A new helper function to send messages to the GUI queue."""
+        self.log_queue.put(f"[{level}] {message}")
+
     async def run(self):
         """The main async execution loop of the bot."""
         self.is_running = True
         self.start_time = time.time()
-        logging.info("Starting Asynchronous Arbitrage Bot...")
+        self._log("Starting Asynchronous Arbitrage Bot...")
 
         while self.is_running:
-            logging.info("--- Starting new scan cycle ---")
+            self._log("--- Starting new scan cycle ---")
             
             try:
                 if self._check_stop_conditions():
@@ -58,33 +65,33 @@ class AsyncArbitrageBot:
                     continue
 
                 portfolio = await self.exchange_manager.get_portfolio_snapshot()
-                logging.info(f"Current Portfolio Value: ${portfolio.get('total_usd_value', 0.0):.2f}")
+                self._log(f"Current Portfolio Value: ${portfolio.get('total_usd_value', 0.0):.2f}")
 
                 if self.risk_manager.check_kill_switch(portfolio):
                     self.is_running = False
-                    logging.critical("Risk kill switch activated. Shutting down.")
+                    self._log("Risk kill switch activated. Shutting down.", "CRITICAL")
                     continue
                 
                 opportunities = await self._scan_for_opportunities()
 
                 if opportunities:
                     best_opportunity = opportunities[0]
-                    logging.info(f"Profitable opportunity found: Expect ${best_opportunity['profit_usd']:.4f} profit on a ${self.trade_size_usdt} trade.")
+                    self._log(f"Profitable opportunity found: Expect ${best_opportunity['profit_usd']:.4f} profit on a ${self.trade_size_usdt} trade.")
                     await self._execute_arbitrage(best_opportunity, portfolio)
                 else:
-                    logging.info("No profitable opportunities found in this cycle.")
+                    self._log("No profitable opportunities found in this cycle.")
 
-                logging.info(f"Waiting for {self.scan_interval_s} seconds until next scan...")
+                self._log(f"Waiting for {self.scan_interval_s} seconds until next scan...")
                 await asyncio.sleep(self.scan_interval_s)
 
             except asyncio.CancelledError:
-                logging.info("Bot run task was cancelled.")
+                self._log("Bot run task was cancelled.")
                 self.is_running = False
             except Exception as e:
-                logging.error(f"An error occurred in the main bot loop: {e}", exc_info=True)
+                self._log(f"An error occurred in the main bot loop: {e}", "ERROR")
                 self.is_running = False
 
-        logging.info("Bot loop finished.")
+        self._log("Bot loop finished.")
 
     def _check_stop_conditions(self) -> bool:
         stop_conditions = self.config.get('stop_conditions')
@@ -92,12 +99,12 @@ class AsyncArbitrageBot:
 
         max_trades = stop_conditions.get('max_trades')
         if max_trades is not None and self.trades_executed >= max_trades:
-            logging.info(f"Stop condition met: Maximum trades ({max_trades}) reached.")
+            self._log(f"Stop condition met: Maximum trades ({max_trades}) reached.")
             return True
 
         run_duration_s = stop_conditions.get('run_duration_s')
         if run_duration_s is not None and (time.time() - self.start_time) >= run_duration_s:
-            logging.info(f"Stop condition met: Maximum run duration ({run_duration_s}s) reached.")
+            self._log(f"Stop condition met: Maximum run duration ({run_duration_s}s) reached.")
             return True
         
         return False
@@ -175,18 +182,17 @@ class AsyncArbitrageBot:
         sell_ex_balance = portfolio.get('by_exchange', {}).get(sell_ex, {}).get('assets', {}).get(base_currency, 0)
 
         if buy_ex_balance < self.trade_size_usdt:
-            logging.warning(f"Skipping trade: Insufficient {quote_currency} on {buy_ex}. Have {buy_ex_balance}, need {self.trade_size_usdt}.")
+            self._log(f"Skipping trade: Insufficient {quote_currency} on {buy_ex}. Have {buy_ex_balance}, need {self.trade_size_usdt}.", "WARNING")
             return
         if sell_ex_balance < trade_amount_base:
-            logging.warning(f"Skipping trade: Insufficient {base_currency} on {sell_ex}. Have {sell_ex_balance}, need {trade_amount_base:.6f}.")
+            self._log(f"Skipping trade: Insufficient {base_currency} on {sell_ex}. Have {sell_ex_balance}, need {trade_amount_base:.6f}.", "WARNING")
             cooldown_key = f"sell-{base_currency}-{sell_ex}"
             self.opportunity_cooldowns[cooldown_key] = time.time() + self.cooldown_duration_s
-            logging.info(f"Placed {cooldown_key} on cooldown for {self.cooldown_duration_s} seconds.")
+            self._log(f"Placed {cooldown_key} on cooldown for {self.cooldown_duration_s} seconds.")
             return
             
-        logging.info(f"Executing arbitrage: BUY {trade_amount_base:.6f} {symbol} on {buy_ex} and SELL on {sell_ex}")
+        self._log(f"Executing arbitrage: BUY {trade_amount_base:.6f} {symbol} on {buy_ex} and SELL on {sell_ex}")
         
-        # --- THIS IS THE FIX: The create_order arguments are now in the correct order ---
         buy_task = self.exchange_manager.create_order(
             ex_id=buy_ex, symbol=symbol, order_type='market', side='buy', amount=trade_amount_base
         )
@@ -202,22 +208,22 @@ class AsyncArbitrageBot:
         sell_succeeded = not isinstance(sell_result, Exception)
 
         if buy_succeeded and not sell_succeeded:
-            logging.critical(f"SELL leg failed on {sell_ex}. NEUTRALIZING successful BUY on {buy_ex}.")
+            self._log(f"SELL leg failed on {sell_ex}. NEUTRALIZING successful BUY on {buy_ex}.", "CRITICAL")
             await self._neutralize_trade('sell', buy_ex, symbol, trade_amount_base, buy_result)
         
         if not buy_succeeded and sell_succeeded:
-            logging.critical(f"BUY leg failed on {buy_ex}. NEUTRALIZING successful SELL on {sell_ex}.")
+            self._log(f"BUY leg failed on {buy_ex}. NEUTRALIZING successful SELL on {sell_ex}.", "CRITICAL")
             await self._neutralize_trade('buy', sell_ex, symbol, trade_amount_base, sell_result)
 
         if buy_succeeded:
-             logging.info(f"Successfully placed BUY order on {buy_ex}: {buy_result.get('id', 'N/A')}")
+             self._log(f"Successfully placed BUY order on {buy_ex}: {buy_result.get('id', 'N/A')}")
         else:
-             logging.error(f"BUY order on {buy_ex} FAILED: {buy_result}")
+             self._log(f"BUY order on {buy_ex} FAILED: {buy_result}", "ERROR")
 
         if sell_succeeded:
-             logging.info(f"Successfully placed SELL order on {sell_ex}: {sell_result.get('id', 'N/A')}")
+             self._log(f"Successfully placed SELL order on {sell_ex}: {sell_result.get('id', 'N/A')}")
         else:
-             logging.error(f"SELL order on {sell_ex} FAILED: {sell_result}")
+             self._log(f"SELL order on {sell_ex} FAILED: {sell_result}", "ERROR")
         
         if buy_succeeded or sell_succeeded:
             self.trades_executed += 1
@@ -227,14 +233,19 @@ class AsyncArbitrageBot:
         Places a reverse market order to neutralize a partially failed trade.
         """
         try:
-            logging.info(f"Attempting to place a neutralizing {side} order on {ex_id} for {amount:.6f} {symbol}.")
+            self._log(f"Attempting to place a neutralizing {side} order on {ex_id} for {amount:.6f} {symbol}.")
             neutralize_amount = original_trade.get('filled', amount) if isinstance(original_trade, dict) else amount
             if neutralize_amount > 0:
                 await self.exchange_manager.create_order(
                     ex_id=ex_id, symbol=symbol, order_type='market', side=side, amount=neutralize_amount
                 )
-                logging.critical(f"SUCCESSFULLY placed neutralizing {side} order on {ex_id}.")
+                self._log(f"SUCCESSFULLY placed neutralizing {side} order on {ex_id}.", "CRITICAL")
             else:
-                logging.warning("Original trade amount was 0, no neutralization needed.")
+                self._log("Original trade amount was 0, no neutralization needed.", "WARNING")
         except Exception as e:
-            logging.error(f"CRITICAL FAILURE: Could not neutralize trade on {ex_id}. MANUAL INTERVENTION REQUIRED. Error: {e}")
+            self._log(f"CRITICAL FAILURE: Could not neutralize trade on {ex_id}. MANUAL INTERVENTION REQUIRED. Error: {e}", "ERROR")
+
+    def stop(self):
+        """Stops the bot's run loop."""
+        self._log("Stop command received.")
+        self.is_running = False

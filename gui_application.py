@@ -1,207 +1,245 @@
-import threading
-import queue
-import logging
+# gui_application.py
+
+import asyncio
 import time
-from typing import Any, Dict, Optional
-import customtkinter as ctk
-from tkinter import messagebox
+from typing import Dict, Any, List, Optional
+import queue
+import itertools
 
-from bot_engine import ArbitrageBot
-from utils import ConfigError, ExchangeInitError
-from gui_components.left_panel import LeftPanel
-from gui_components.live_ops_tab import LiveOpsTab
-from gui_components.analysis_tab import AnalysisTab
+from exchange_manager_async import AsyncExchangeManager
+from risk_manager import RiskManager
+from rebalancer import Rebalancer
+from trade_logger import TradeLogger
 
-class QueueHandler(logging.Handler):
-    """Custom logging handler to route log records to the GUI queue."""
-    def __init__(self, queue: queue.Queue):
-        super().__init__()
-        self.queue = queue
-    def emit(self, record):
-        self.queue.put({"type": "log", "level": record.levelname, "message": self.format(record)})
-
-class App(ctk.CTk):
-    """
-    The main application class. It initializes the bot, builds the main UI structure,
-    and handles the communication between the bot engine and the UI components.
-    """
-    def __init__(self, config: Dict[str, Any], exchanges_config: Dict[str, Any]):
-        super().__init__()
-        self.title("Arbitrage Bot Control Center")
-        self.geometry("1600x900")
-        ctk.set_appearance_mode("dark")
-        
+class AsyncArbitrageBot:
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        exchange_manager: AsyncExchangeManager,
+        risk_manager: RiskManager,
+        rebalancer: Rebalancer,
+        trade_logger: TradeLogger,
+        update_queue: queue.Queue # Use the same queue name as sync bot
+    ):
         self.config = config
-        self.update_queue: queue.Queue = queue.Queue()
-        self.logger = logging.getLogger()
-        self.add_gui_handler_to_logger()
+        self.exchange_manager = exchange_manager
+        self.risk_manager = risk_manager
+        self.rebalancer = rebalancer
+        self.trade_logger = trade_logger
+        self.update_queue = update_queue
 
-        self.bot: Optional[ArbitrageBot] = None
-        self.bot_thread: Optional[threading.Thread] = None
-        self.initial_portfolio_snapshot: Optional[Dict[str, Any]] = None
+        self.params = self.config.get('trading_parameters', {})
+        self.symbols_to_scan = self.params.get('symbols_to_scan', [])
+        self.scan_interval_s = self.params.get('scan_interval_s', 3.0)
+        self.min_profit_usd = self.params.get('min_profit_usd', 0.10)
+        self.trade_size_usdt = self.params.get('trade_size_usdt', 20.0)
+        
+        self.cooldown_duration_s = self.params.get('cooldown_duration_s', 300)
+        self.opportunity_cooldowns = {}
+
+        self.is_running = False
+        self.start_time = None
+        self.trade_count: int = 0
+        self.successful_trades: int = 0
+        self.failed_trades: int = 0
+        self.neutralized_trades: int = 0
+        self.critical_failures: int = 0
+        self.session_profit: float = 0.0
+
+    def send_update(self, update_type: str, data: Any):
+        """Sends a structured message to the GUI's update queue."""
+        self.update_queue.put({"type": update_type, "data": data})
+
+    def _get_current_stats(self) -> Dict[str, Any]:
+        """Mirrors the stats structure of the synchronous bot."""
+        return {
+            'trades': self.trade_count, 'successful': self.successful_trades,
+            'failed': self.failed_trades, 'neutralized': self.neutralized_trades,
+            'critical': self.critical_failures, 'profit': self.session_profit
+        }
+
+    async def run(self):
+        self.is_running = True
+        self.start_time = time.time()
+        self.send_update("log", "Starting Asynchronous Arbitrage Bot...")
+
+        # Take initial snapshot
+        initial_portfolio = await self.exchange_manager.get_portfolio_snapshot()
+        self.send_update('initial_portfolio', initial_portfolio)
 
         try:
-            self.bot = ArbitrageBot(config, exchanges_config, self.update_queue)
-        except (ConfigError, ExchangeInitError) as e:
-            messagebox.showerror("Initialization Failed", str(e))
-        
-        self.grid_columnconfigure(1, weight=1)
-        self.grid_rowconfigure(0, weight=1)
-        
-        self.create_widgets()
+            while self.is_running:
+                self.send_update("log", "--- Starting new scan cycle ---")
 
-        if not self.bot:
-            self.logger.critical("Bot initialization failed. Please check config and restart.")
-            self.left_panel.set_controls_state(False) # Disable controls if bot fails
+                if self._check_stop_conditions():
+                    self.is_running = False
+                    continue
 
-        self.process_queue()
+                portfolio = await self.exchange_manager.get_portfolio_snapshot()
+                self.send_update("portfolio_update", {"portfolio": portfolio, "balances": portfolio.get('by_exchange', {})})
 
-    def add_gui_handler_to_logger(self):
-        """Adds the queue handler to the root logger."""
-        queue_handler = QueueHandler(self.update_queue)
-        queue_handler.setFormatter(logging.Formatter('[%(levelname)s] %(message)s'))
-        logging.getLogger().addHandler(queue_handler)
+                if self.risk_manager.check_kill_switch(portfolio):
+                    self.is_running = False
+                    self.send_update("log", "Risk kill switch activated. Shutting down.")
+                    continue
+                
+                opportunity = await self._find_arbitrage_opportunity()
 
-    def create_widgets(self):
-        """Creates the main layout and instantiates the UI components."""
-        # --- Left Panel ---
-        self.left_panel = LeftPanel(self, self.config, self.start_bot, self.stop_bot)
-        self.left_panel.grid(row=0, column=0, sticky="nsw")
+                if opportunity:
+                    self.send_update("log", f"Opportunity found! Est Profit: ${opportunity['profit_usd']:.4f}")
+                    self.send_update('opportunity_found', {'symbol': opportunity['symbol'], 'spread_pct': (opportunity['profit_usd'] / self.trade_size_usdt) * 100})
+                    await self._execute_arbitrage(opportunity, portfolio)
+                else:
+                    self.send_update("log", "No profitable opportunities found in this cycle.")
 
-        # --- Right Panel (Main Tab View) ---
-        right_frame = ctk.CTkFrame(self)
-        right_frame.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
-        right_frame.grid_rowconfigure(0, weight=1)
-        right_frame.grid_columnconfigure(0, weight=1)
+                self.send_update("log", f"Waiting for {self.scan_interval_s} seconds until next scan...")
+                await asyncio.sleep(self.scan_interval_s)
 
-        tab_view = ctk.CTkTabview(right_frame)
-        tab_view.pack(expand=True, fill="both", padx=5, pady=5)
-        tab_view.add("Live Operations")
-        tab_view.add("Performance Analysis")
-
-        # --- Instantiate Tabs ---
-        self.live_ops_tab = LiveOpsTab(tab_view.tab("Live Operations"), self.config, self.bot)
-        self.analysis_tab = AnalysisTab(tab_view.tab("Performance Analysis"), self)
-
-    def process_queue(self):
-        """
-        The heart of the GUI. Processes messages from the bot engine's queue
-        and dispatches them to the appropriate UI component for updates.
-        """
-        try:
-            for _ in range(100): # Process up to 100 messages per cycle
-                message = self.update_queue.get_nowait()
-                msg_type = message.get("type")
-
-                if msg_type == "initial_portfolio":
-                    self.initial_portfolio_snapshot = message['data']
-                    self.analysis_tab.update_portfolio_display(message['data'], self.initial_portfolio_snapshot)
-                elif msg_type == "portfolio_update":
-                    self.left_panel.update_balance_display(message['data']['balances'])
-                    self.analysis_tab.update_portfolio_display(message['data']['portfolio'], self.initial_portfolio_snapshot)
-                elif msg_type == "balance_update":
-                    self.left_panel.update_balance_display(message['data'])
-                elif msg_type == "log":
-                    self.live_ops_tab.add_log_message(message.get("level", "INFO"), message['message'])
-                elif msg_type == "stats":
-                    self.left_panel.update_stats_display(**message['data'])
-                elif msg_type == "market_data":
-                    self.live_ops_tab.update_market_data_display(message['data'])
-                elif msg_type == "opportunity_found":
-                    self.live_ops_tab.add_opportunity_to_history(message['data'])
-                elif msg_type == "critical_error":
-                    messagebox.showerror("Critical Runtime Error", message['data'])
-                elif msg_type == "stopped":
-                    if not (self.bot_thread and self.bot_thread.is_alive()):
-                        self.stop_bot()
-
-        except queue.Empty:
-            pass
+        except asyncio.CancelledError:
+            self.send_update("log", "Bot run task was cancelled.")
+        except Exception as e:
+            self.send_update("critical_error", f"An unexpected error occurred in the main bot loop: {e}")
         finally:
-            self.after(100, self.process_queue)
+            self.send_update("log", "Bot loop finished.")
+            self.is_running = False
+            self.send_update("stopped", {})
 
-    def start_bot(self):
-        """Handles the logic for starting the arbitrage bot thread."""
-        if not self.bot:
-            messagebox.showerror("Error", "Bot could not be started.")
+
+    def _check_stop_conditions(self) -> bool:
+        stop_conditions = self.config.get('stop_conditions')
+        if not stop_conditions: return False
+        max_trades = stop_conditions.get('max_trades')
+        if max_trades is not None and self.trade_count >= max_trades:
+            self.send_update("log", f"Stop condition met: Maximum trades ({max_trades}) reached.")
+            return True
+        run_duration_s = stop_conditions.get('run_duration_s')
+        if run_duration_s is not None and (time.time() - self.start_time) >= run_duration_s:
+            self.send_update("log", f"Stop condition met: Maximum run duration ({run_duration_s}s) reached.")
+            return True
+        return False
+
+    async def _find_arbitrage_opportunity(self) -> Optional[Dict[str, Any]]:
+        ex_ids = list(self.exchange_manager.exchanges.keys())
+        if len(ex_ids) < 2: return None
+        current_time = time.time()
+        best_opportunity = None
+        for symbol in self.symbols_to_scan:
+            tasks = {ex_id: self.exchange_manager.get_order_book(ex_id, symbol) for ex_id in ex_ids}
+            order_books_results = await asyncio.gather(*tasks.values())
+            order_books = dict(zip(tasks.keys(), order_books_results))
+            for ex1_id, ex2_id in itertools.permutations(ex_ids, 2):
+                book1 = order_books.get(ex1_id)
+                book2 = order_books.get(ex2_id)
+                base_currency, _ = symbol.split('/')
+                if book1 and book2 and book1.get('asks') and book1['asks'] and book2.get('bids') and book2['bids']:
+                    buy_price, sell_price = book1['asks'][0][0], book2['bids'][0][0]
+                    cooldown_key = f"sell-{base_currency}-{ex2_id}"
+                    if sell_price > buy_price and self.opportunity_cooldowns.get(cooldown_key, 0) < current_time:
+                        amount_to_buy = self.trade_size_usdt / buy_price
+                        profit = (sell_price - buy_price) * amount_to_buy
+                        if profit > self.min_profit_usd:
+                            current_opp = self._create_opportunity(symbol, ex1_id, buy_price, ex2_id, sell_price, profit)
+                            if not best_opportunity or profit > best_opportunity['profit_usd']:
+                                best_opportunity = current_opp
+        return best_opportunity
+
+    def _create_opportunity(self, symbol, buy_ex, buy_price, sell_ex, sell_price, profit_usd):
+        return {
+            "symbol": symbol, "buy_exchange": buy_ex, "buy_price": buy_price,
+            "sell_exchange": sell_ex, "sell_price": sell_price, "profit_usd": profit_usd
+        }
+
+    async def _execute_arbitrage(self, opportunity: Dict[str, Any], portfolio: Dict[str, Any]):
+        symbol = opportunity['symbol']
+        buy_ex, sell_ex = opportunity['buy_exchange'], opportunity['sell_exchange']
+        buy_price = opportunity['buy_price']
+        base_currency, quote_currency = symbol.split('/')
+        trade_amount_base = self.trade_size_usdt / buy_price
+        buy_ex_balance = portfolio.get('by_exchange', {}).get(buy_ex, {}).get('assets', {}).get(quote_currency, 0)
+        sell_ex_balance = portfolio.get('by_exchange', {}).get(sell_ex, {}).get('assets', {}).get(base_currency, 0)
+        if buy_ex_balance < self.trade_size_usdt:
+            self.send_update("log", f"Skipping trade: Insufficient {quote_currency} on {buy_ex}. Have {buy_ex_balance}, need {self.trade_size_usdt}.")
             return
+        if sell_ex_balance < trade_amount_base:
+            self.send_update("log", f"Skipping trade: Insufficient {base_currency} on {sell_ex}. Have {sell_ex_balance}, need {trade_amount_base:.6f}.")
+            cooldown_key = f"sell-{base_currency}-{sell_ex}"
+            self.opportunity_cooldowns[cooldown_key] = time.time() + self.cooldown_duration_s
+            self.send_update("log", f"Placed {cooldown_key} on cooldown for {self.cooldown_duration_s} seconds.")
+            return
+            
+        self.send_update("log", f"Executing arbitrage: BUY {trade_amount_base:.6f} {symbol} on {buy_ex} and SELL on {sell_ex}")
         
-        # 1. Get and validate settings from the GUI
-        try:
-            params = self.left_panel.get_start_parameters()
-            self.bot.config['trading_parameters'].update(params)
-            
-            self.logger.info(f"--- Starting New Session ---")
-            self.logger.info(f"Mode: {'DRY RUN (SIMULATION)' if params['dry_run'] else 'LIVE TRADING'}")
-            
-            if params['sizing_mode'] == 'fixed':
-                 self.logger.info(f"Sizing Mode: FIXED @ ${params['trade_size_usdt']:.2f}")
+        buy_task = self.exchange_manager.create_order(ex_id=buy_ex, symbol=symbol, order_type='market', side='buy', amount=trade_amount_base)
+        sell_task = self.exchange_manager.create_order(ex_id=sell_ex, symbol=symbol, order_type='market', side='sell', amount=trade_amount_base)
+        
+        results = await asyncio.gather(buy_task, sell_task, return_exceptions=True)
+        buy_result, sell_result = results
+        
+        buy_succeeded, sell_succeeded = not isinstance(buy_result, Exception), not isinstance(sell_result, Exception)
+
+        with threading.Lock(): # Use lock for thread-safe updates
+            self.trade_count += 1
+            if buy_succeeded and sell_succeeded:
+                self.successful_trades += 1
+                # In a real scenario, you'd calculate actual profit here
+                self.session_profit += opportunity['profit_usd']
             else:
-                 self.logger.info(f"Sizing Mode: DYNAMIC ({params['dynamic_size_percentage']}% of balance, max ${params['dynamic_size_max_usdt']:.2f})")
-            
-            self.logger.info(f"Symbols: {', '.join(params['selected_symbols'])}")
+                self.failed_trades += 1
 
-        except (ValueError, TypeError) as e:
-            messagebox.showerror("Invalid Input", str(e))
-            return
-
-        # 2. Disable UI controls
-        self.left_panel.set_controls_state(False)
-
-        # 3. Reset bot state and start the thread
-        self.initial_portfolio_snapshot = None 
-        with self.bot.state_lock:
-            self.bot.session_profit, self.bot.trade_count, self.bot.successful_trades = 0.0, 0, 0
-            self.bot.failed_trades, self.bot.neutralized_trades, self.bot.critical_failures = 0, 0, 0
-        self.left_panel.update_stats_display(**self.bot._get_current_stats())
+            if buy_succeeded and not sell_succeeded:
+                await self._neutralize_trade('sell', buy_ex, symbol, trade_amount_base, buy_result)
+            if not buy_succeeded and sell_succeeded:
+                await self._neutralize_trade('buy', sell_ex, symbol, trade_amount_base, sell_result)
         
-        self.bot_thread = threading.Thread(
-            target=self.bot.run, 
-            args=(params['selected_symbols'],), 
-            daemon=True
-        )
-        self.bot_thread.start()
-        self.update_runtime_clock()
+        self.send_update('stats', self._get_current_stats())
 
-    def stop_bot(self):
-        """Handles the logic for stopping the arbitrage bot."""
-        self.left_panel.set_status("STOPPING...", "orange")
-        if self.bot:
-            self.bot.stop()
-            if self.bot_thread and self.bot_thread.is_alive():
-                self.logger.info("Waiting for bot thread to terminate...")
-                self.bot_thread.join(timeout=10)
-        
-        self.left_panel.set_controls_state(True)
-        self.left_panel.set_status("STOPPED", "red")
-        self.left_panel.update_runtime_clock(0) # Reset clock display
-        self.logger.info("Bot shutdown complete.")
+    async def _neutralize_trade(self, side: str, ex_id: str, symbol: str, amount: float, original_trade: Dict):
+        try:
+            self.send_update("log", f"Attempting to place a neutralizing {side} order on {ex_id} for {amount:.6f} {symbol}.")
+            neutralize_amount = original_trade.get('filled', amount) if isinstance(original_trade, dict) else amount
+            if neutralize_amount > 0:
+                await self.exchange_manager.create_order(
+                    ex_id=ex_id, symbol=symbol, order_type='market', side=side, amount=neutralize_amount
+                )
+                self.send_update("log", f"SUCCESSFULLY placed neutralizing {side} order on {ex_id}.")
+                with threading.Lock(): self.neutralized_trades += 1
+            else:
+                self.send_update("log", "Original trade amount was 0, no neutralization needed.")
+        except Exception as e:
+            self.send_update("critical_error", f"CRITICAL FAILURE: Could not neutralize trade on {ex_id}. MANUAL INTERVENTION REQUIRED. Error: {e}")
+            with threading.Lock(): self.critical_failures += 1
 
-    def update_runtime_clock(self):
-        """Periodically updates the runtime clock on the GUI."""
-        if self.bot and self.bot.running:
-            uptime_seconds = int(time.time() - self.bot.start_time)
-            self.left_panel.update_runtime_clock(uptime_seconds)
-            self.after(1000, self.update_runtime_clock)
+    def stop(self):
+        self.send_update("log", "Stop command received.")
+        self.is_running = False
 
+# # gui_application.py
 
-
-# import threading
+# import customtkinter as ctk
 # import queue
+# import threading
+# import asyncio
 # import logging
 # import time
-# from typing import Any, Dict, List, Optional
-# import customtkinter as ctk
-# from tkinter import messagebox
-# from matplotlib.figure import Figure
-# from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-# import pandas as pd
+# from typing import Any, Dict, Optional
 
+# # --- Import Your Existing GUI Components ---
+# from gui_components.left_panel import LeftPanel
+# from gui_components.live_ops_tab import LiveOpsTab
+# from gui_components.analysis_tab import AnalysisTab
+
+# # --- Import Both Bot Engines and Their Managers ---
 # from bot_engine import ArbitrageBot
-# from utils import ConfigError, ExchangeInitError
-# from performance_analyzer import PerformanceAnalyzer
+# from async_bot_engine import AsyncArbitrageBot
+# from exchange_manager import ExchangeManager
+# from exchange_manager_async import AsyncExchangeManager
+# from risk_manager import RiskManager
+# from rebalancer import Rebalancer
+# from trade_logger import TradeLogger
 
+# # --- YOUR ORIGINAL QueueHandler IS RESTORED ---
 # class QueueHandler(logging.Handler):
+#     """Custom logging handler to route log records to the GUI queue."""
 #     def __init__(self, queue: queue.Queue):
 #         super().__init__()
 #         self.queue = queue
@@ -209,6 +247,214 @@ class App(ctk.CTk):
 #         self.queue.put({"type": "log", "level": record.levelname, "message": self.format(record)})
 
 # class App(ctk.CTk):
+#     """
+#     Your original application class, now with engine selection and safe threading.
+#     """
+#     def __init__(self, config: Dict[str, Any]):
+#         super().__init__()
+#         self.title("Arbitrage Bot Control Center - V2")
+#         self.geometry("1600x900")
+#         ctk.set_appearance_mode("dark")
+        
+#         self.config = config
+#         self.update_queue: queue.Queue = queue.Queue()
+#         self.add_gui_handler_to_logger()
+
+#         self.bot_instance: Optional[Any] = None # Can be sync or async bot
+#         self.bot_thread: Optional[threading.Thread] = None
+#         self.initial_portfolio_snapshot: Optional[Dict[str, Any]] = None
+
+#         self.grid_columnconfigure(1, weight=1)
+#         self.grid_rowconfigure(0, weight=1)
+        
+#         self.create_widgets()
+#         self.process_queue()
+
+#     def add_gui_handler_to_logger(self):
+#         """Adds the queue handler to the root logger, as per your original design."""
+#         queue_handler = QueueHandler(self.update_queue)
+#         queue_handler.setFormatter(logging.Formatter('[%(levelname)s] %(message)s'))
+#         logging.getLogger().addHandler(queue_handler)
+
+#     def create_widgets(self):
+#         """Creates the main layout from your original design."""
+#         # --- Left Panel ---
+#         self.left_panel = LeftPanel(self, self.config, self.start_bot, self.stop_bot)
+#         self.left_panel.grid(row=0, column=0, sticky="nsw")
+
+#         # --- Right Panel (Main Tab View) ---
+#         right_frame = ctk.CTkFrame(self)
+#         right_frame.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
+#         right_frame.grid_rowconfigure(0, weight=1)
+#         right_frame.grid_columnconfigure(0, weight=1)
+
+#         tab_view = ctk.CTkTabview(right_frame)
+#         tab_view.pack(expand=True, fill="both", padx=5, pady=5)
+#         tab_view.add("Live Operations")
+#         tab_view.add("Performance Analysis")
+
+#         # --- Instantiate Tabs ---
+#         # Pass the app instance so tabs can access the bot, config, etc.
+#         self.live_ops_tab = LiveOpsTab(tab_view.tab("Live Operations"), self.config, self)
+#         self.analysis_tab = AnalysisTab(tab_view.tab("Performance Analysis"), self)
+        
+#         # --- NEW: Add Engine controls to the left panel ---
+#         self._add_engine_controls_to_left_panel()
+
+#     def _add_engine_controls_to_left_panel(self):
+#         """Injects the new controls into your existing left panel."""
+#         self.engine_var = ctk.StringVar(value="Async")
+#         self.engine_switch = ctk.CTkSwitch(
+#             self.left_panel, text="Use Async Engine", variable=self.engine_var,
+#             onvalue="Async", offvalue="Regular"
+#         )
+#         # Pack it above the existing start button in your left_panel
+#         self.engine_switch.pack(pady=10, padx=10, before=self.left_panel.start_button)
+
+
+#     def process_queue(self):
+#         """
+#         Your original, powerful queue processor. It is fully restored.
+#         """
+#         try:
+#             for _ in range(100):
+#                 message = self.update_queue.get_nowait()
+#                 msg_type = message.get("type")
+#                 data = message.get("data")
+
+#                 if msg_type == "initial_portfolio":
+#                     self.initial_portfolio_snapshot = data
+#                     self.analysis_tab.update_portfolio_display(data, self.initial_portfolio_snapshot)
+#                 elif msg_type == "portfolio_update":
+#                     self.left_panel.update_balance_display(data['balances'])
+#                     self.analysis_tab.update_portfolio_display(data['portfolio'], self.initial_portfolio_snapshot)
+#                 elif msg_type == "log":
+#                     self.live_ops_tab.add_log_message(message.get("level", "INFO"), message['message'])
+#                 elif msg_type == "stats":
+#                     self.left_panel.update_stats_display(**data)
+#                 elif msg_type == "market_data":
+#                     self.live_ops_tab.update_market_data_display(data)
+#                 elif msg_type == "stopped":
+#                     if not (self.bot_thread and self.bot_thread.is_alive()):
+#                         self.stop_bot()
+
+#         except queue.Empty:
+#             pass
+#         finally:
+#             self.after(100, self.process_queue)
+
+#     # --- NEW, SAFE THREADING LOGIC ---
+#     def start_bot(self):
+#         """Starts the selected bot engine safely in a background thread."""
+#         self.left_panel.set_status("STARTING...", "cyan")
+#         use_async = self.engine_var.get() == "Async"
+        
+#         if use_async:
+#             thread_target = self._run_async_bot_in_thread
+#         else:
+#             thread_target = self._run_sync_bot_in_thread
+            
+#         self.bot_thread = threading.Thread(target=thread_target, daemon=True)
+#         self.bot_thread.start()
+
+#         self.left_panel.set_controls_state(False)
+#         self.engine_switch.configure(state="disabled")
+#         self.update_runtime_clock()
+
+#     def stop_bot(self):
+#         """Stops the bot and resets the GUI, based on your original logic."""
+#         self.left_panel.set_status("STOPPING...", "orange")
+#         if self.bot_instance and self.bot_instance.is_running:
+#             self.bot_instance.stop() # Use the bot's own stop method
+#             if self.bot_thread and self.bot_thread.is_alive():
+#                 logging.info("Waiting for bot thread to terminate...")
+#                 self.bot_thread.join(timeout=10)
+        
+#         self.left_panel.set_controls_state(True)
+#         self.engine_switch.configure(state="normal")
+#         self.left_panel.set_status("STOPPED", "red")
+#         self.left_panel.update_runtime_clock(0)
+#         logging.info("Bot shutdown complete.")
+
+#     def _run_sync_bot_in_thread(self):
+#         """Initializes and runs the synchronous bot."""
+#         try:
+#             # All bot components are created here, in the background
+#             exchange_manager = ExchangeManager(self.config['exchanges'])
+#             risk_manager = RiskManager(self.config, exchange_manager)
+#             rebalancer = Rebalancer(self.config, exchange_manager)
+#             trade_logger = TradeLogger()
+            
+#             # Your original bot uses the update_queue for rich data
+#             self.bot_instance = ArbitrageBot(self.config, self.config['exchanges'], self.update_queue)
+            
+#             # Get params from GUI just before running
+#             params = self.left_panel.get_start_parameters()
+#             self.bot_instance.config['trading_parameters'].update(params)
+            
+#             self.left_panel.set_status("RUNNING", "green")
+#             self.bot_instance.run(params['selected_symbols'])
+#         except Exception as e:
+#             logging.critical(f"Fatal error in sync bot thread: {e}", exc_info=True)
+#             self.update_queue.put({"type": "log", "level": "CRITICAL", "message": f"Bot thread crashed: {e}"})
+#             self.left_panel.set_status("CRASHED", "red")
+
+#     def _run_async_bot_in_thread(self):
+#         """Initializes and runs the asynchronous bot."""
+#         try:
+#             exchange_manager = AsyncExchangeManager(self.config)
+#             risk_manager = RiskManager(self.config, exchange_manager)
+#             rebalancer = Rebalancer(self.config, exchange_manager)
+#             trade_logger = TradeLogger()
+
+#             # The async bot needs to be adapted to use the rich update_queue
+#             self.bot_instance = AsyncArbitrageBot(
+#                 self.config, exchange_manager, risk_manager,
+#                 rebalancer, trade_logger, self.update_queue
+#             )
+            
+#             self.left_panel.set_status("RUNNING (Async)", "green")
+#             asyncio.run(self.bot_instance.run())
+#         except Exception as e:
+#             logging.critical(f"Fatal error in async bot thread: {e}", exc_info=True)
+#             self.update_queue.put({"type": "log", "level": "CRITICAL", "message": f"Async bot thread crashed: {e}"})
+#             self.left_panel.set_status("CRASHED", "red")
+            
+#     def update_runtime_clock(self):
+#         """Your original runtime clock function, fully restored."""
+#         if self.bot_instance and self.bot_instance.is_running:
+#             uptime_seconds = int(time.time() - self.bot_instance.start_time)
+#             self.left_panel.update_runtime_clock(uptime_seconds)
+#             self.after(1000, self.update_runtime_clock)
+
+            
+# import threading
+# import queue
+# import logging
+# import time
+# from typing import Any, Dict, Optional
+# import customtkinter as ctk
+# from tkinter import messagebox
+
+# from bot_engine import ArbitrageBot
+# from utils import ConfigError, ExchangeInitError
+# from gui_components.left_panel import LeftPanel
+# from gui_components.live_ops_tab import LiveOpsTab
+# from gui_components.analysis_tab import AnalysisTab
+
+# class QueueHandler(logging.Handler):
+#     """Custom logging handler to route log records to the GUI queue."""
+#     def __init__(self, queue: queue.Queue):
+#         super().__init__()
+#         self.queue = queue
+#     def emit(self, record):
+#         self.queue.put({"type": "log", "level": record.levelname, "message": self.format(record)})
+
+# class App(ctk.CTk):
+#     """
+#     The main application class. It initializes the bot, builds the main UI structure,
+#     and handles the communication between the bot engine and the UI components.
+#     """
 #     def __init__(self, config: Dict[str, Any], exchanges_config: Dict[str, Any]):
 #         super().__init__()
 #         self.title("Arbitrage Bot Control Center")
@@ -222,12 +468,8 @@ class App(ctk.CTk):
 
 #         self.bot: Optional[ArbitrageBot] = None
 #         self.bot_thread: Optional[threading.Thread] = None
-#         self.symbol_checkboxes: Dict[str, ctk.CTkCheckBox] = {}
-#         self.kpi_labels: Dict[str, ctk.CTkLabel] = {}
-#         self.portfolio_labels: Dict[str, ctk.CTkLabel] = {}
-#         self.analysis_canvas_widgets: Dict[str, Any] = {}
 #         self.initial_portfolio_snapshot: Optional[Dict[str, Any]] = None
-        
+
 #         try:
 #             self.bot = ArbitrageBot(config, exchanges_config, self.update_queue)
 #         except (ConfigError, ExchangeInitError) as e:
@@ -240,1144 +482,134 @@ class App(ctk.CTk):
 
 #         if not self.bot:
 #             self.logger.critical("Bot initialization failed. Please check config and restart.")
-#             self.start_button.configure(state="disabled")
+#             self.left_panel.set_controls_state(False) # Disable controls if bot fails
 
 #         self.process_queue()
 
 #     def add_gui_handler_to_logger(self):
+#         """Adds the queue handler to the root logger."""
 #         queue_handler = QueueHandler(self.update_queue)
 #         queue_handler.setFormatter(logging.Formatter('[%(levelname)s] %(message)s'))
 #         logging.getLogger().addHandler(queue_handler)
 
 #     def create_widgets(self):
-#         self.left_frame = ctk.CTkFrame(self, width=350, corner_radius=0)
-#         self.left_frame.grid(row=0, column=0, sticky="nsw")
-#         self.left_frame.grid_propagate(False) # Prevent frame from shrinking
-        
-#         self.right_frame = ctk.CTkFrame(self)
-#         self.right_frame.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
-#         self.right_frame.grid_rowconfigure(0, weight=1)
-#         self.right_frame.grid_columnconfigure(0, weight=1)
+#         """Creates the main layout and instantiates the UI components."""
+#         # --- Left Panel ---
+#         self.left_panel = LeftPanel(self, self.config, self.start_bot, self.stop_bot)
+#         self.left_panel.grid(row=0, column=0, sticky="nsw")
 
-#         self.tab_view = ctk.CTkTabview(self.right_frame)
-#         self.tab_view.pack(expand=True, fill="both", padx=5, pady=5)
-#         self.tab_view.add("Live Operations")
-#         self.tab_view.add("Performance Analysis")
+#         # --- Right Panel (Main Tab View) ---
+#         right_frame = ctk.CTkFrame(self)
+#         right_frame.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
+#         right_frame.grid_rowconfigure(0, weight=1)
+#         right_frame.grid_columnconfigure(0, weight=1)
 
-#         self.create_live_operations_tab(self.tab_view.tab("Live Operations"))
-#         self.create_analysis_tab(self.tab_view.tab("Performance Analysis"))
-#         self.populate_left_frame()
+#         tab_view = ctk.CTkTabview(right_frame)
+#         tab_view.pack(expand=True, fill="both", padx=5, pady=5)
+#         tab_view.add("Live Operations")
+#         tab_view.add("Performance Analysis")
 
-#     def populate_left_frame(self):
-#         self.left_frame.grid_rowconfigure(4, weight=1)
-#         ctk.CTkLabel(self.left_frame, text="Arbitrage Bot", font=ctk.CTkFont(size=20, weight="bold")).grid(row=0, column=0, padx=20, pady=(20, 10))
-        
-#         control_frame = ctk.CTkFrame(self.left_frame)
-#         control_frame.grid(row=1, column=0, padx=20, pady=(10,0), sticky="ew")
-#         self.start_button = ctk.CTkButton(control_frame, text="Start Bot", command=self.start_bot)
-#         self.start_button.pack(side="left", expand=True, padx=5, pady=5)
-#         self.stop_button = ctk.CTkButton(control_frame, text="Stop Bot", command=self.stop_bot, state="disabled")
-#         self.stop_button.pack(side="left", expand=True, padx=5, pady=5)
-        
-#         sizing_frame = ctk.CTkFrame(self.left_frame)
-#         sizing_frame.grid(row=2, column=0, padx=20, pady=10, sticky="ew")
-#         sizing_frame.grid_columnconfigure(0, weight=1)
-        
-#         ctk.CTkLabel(sizing_frame, text="Sizing Mode", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, columnspan=2, pady=(5,0))
-#         self.sizing_mode_var = ctk.StringVar(value=self.config['trading_parameters'].get('sizing_mode', 'fixed'))
-        
-#         self.fixed_radio = ctk.CTkRadioButton(sizing_frame, text="Fixed", variable=self.sizing_mode_var, value="fixed", command=self._toggle_sizing_frames)
-#         self.fixed_radio.grid(row=1, column=0, padx=(10,5), pady=5, sticky="w")
-#         self.dynamic_radio = ctk.CTkRadioButton(sizing_frame, text="Dynamic", variable=self.sizing_mode_var, value="dynamic", command=self._toggle_sizing_frames)
-#         self.dynamic_radio.grid(row=1, column=1, padx=(5,10), pady=5, sticky="w")
+#         # --- Instantiate Tabs ---
+#         self.live_ops_tab = LiveOpsTab(tab_view.tab("Live Operations"), self.config, self.bot)
+#         self.analysis_tab = AnalysisTab(tab_view.tab("Performance Analysis"), self)
 
-#         self.fixed_sizing_frame = ctk.CTkFrame(sizing_frame)
-#         self.fixed_sizing_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
-#         self.fixed_sizing_frame.grid_columnconfigure(1, weight=1)
-#         ctk.CTkLabel(self.fixed_sizing_frame, text="Size (USDT):").grid(row=0, column=0, padx=10, pady=5, sticky="w")
-#         self.trade_size_entry = ctk.CTkEntry(self.fixed_sizing_frame)
-#         self.trade_size_entry.grid(row=0, column=1, padx=10, pady=5, sticky="ew")
-#         self.trade_size_entry.insert(0, str(self.config['trading_parameters'].get('trade_size_usdt', 20.0)))
-        
-#         self.dynamic_sizing_frame = ctk.CTkFrame(sizing_frame)
-#         self.dynamic_sizing_frame.grid_columnconfigure(1, weight=1)
-#         ctk.CTkLabel(self.dynamic_sizing_frame, text="Balance (%):").grid(row=0, column=0, padx=10, pady=5, sticky="w")
-#         self.dynamic_pct_entry = ctk.CTkEntry(self.dynamic_sizing_frame)
-#         self.dynamic_pct_entry.grid(row=0, column=1, padx=10, pady=5, sticky="ew")
-#         self.dynamic_pct_entry.insert(0, str(self.config['trading_parameters'].get('dynamic_size_percentage', 5.0)))
-        
-#         ctk.CTkLabel(self.dynamic_sizing_frame, text="Max Size (USDT):").grid(row=1, column=0, padx=10, pady=5, sticky="w")
-#         self.dynamic_max_entry = ctk.CTkEntry(self.dynamic_sizing_frame)
-#         self.dynamic_max_entry.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
-#         self.dynamic_max_entry.insert(0, str(self.config['trading_parameters'].get('dynamic_size_max_usdt', 100.0)))
-
-#         self.dry_run_checkbox = ctk.CTkCheckBox(sizing_frame, text="Dry Run (Simulation Mode)")
-#         self.dry_run_checkbox.grid(row=4, column=0, columnspan=2, padx=10, pady=10, sticky="w")
-#         if self.config['trading_parameters'].get('dry_run', True):
-#             self.dry_run_checkbox.select()
-        
-#         self._toggle_sizing_frames()
-        
-#         symbol_frame = ctk.CTkFrame(self.left_frame)
-#         symbol_frame.grid(row=3, column=0, padx=20, pady=10, sticky="ew")
-#         ctk.CTkLabel(symbol_frame, text="Symbol Selection", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=(5,0))
-#         symbol_scroll_frame = ctk.CTkScrollableFrame(symbol_frame, height=150)
-#         symbol_scroll_frame.pack(fill="x", expand=True, padx=5, pady=5)
-#         for symbol in self.config['trading_parameters']['symbols_to_scan']:
-#             checkbox = ctk.CTkCheckBox(symbol_scroll_frame, text=symbol)
-#             checkbox.pack(anchor="w", padx=10, pady=2)
-#             checkbox.select()
-#             self.symbol_checkboxes[symbol] = checkbox
-            
-#         left_tab_view = ctk.CTkTabview(self.left_frame)
-#         left_tab_view.grid(row=4, column=0, padx=20, pady=10, sticky="nsew")
-#         left_tab_view.add("Session Stats")
-#         left_tab_view.add("Wallet Balances")
-
-#         stats_tab = left_tab_view.tab("Session Stats")
-#         self.stats_frame = ctk.CTkFrame(stats_tab, fg_color="transparent")
-#         self.stats_frame.pack(fill="both", expand=True, padx=5, pady=5)
-#         self.stats_frame.grid_columnconfigure(1, weight=1)
-        
-#         self.status_label = ctk.CTkLabel(self.stats_frame, text="Status: STOPPED", text_color="red", font=ctk.CTkFont(weight="bold"))
-#         self.status_label.grid(row=0, column=0, columnspan=2, padx=10, pady=(5,10))
-#         ctk.CTkLabel(self.stats_frame, text="Session P/L:").grid(row=1, column=0, padx=10, pady=5, sticky="w")
-#         self.profit_value = ctk.CTkLabel(self.stats_frame, text="$0.00")
-#         self.profit_value.grid(row=1, column=1, padx=10, pady=5, sticky="e")
-#         ctk.CTkLabel(self.stats_frame, text="Total Trades:").grid(row=2, column=0, padx=10, pady=5, sticky="w")
-#         self.trades_value = ctk.CTkLabel(self.stats_frame, text="0")
-#         self.trades_value.grid(row=2, column=1, padx=10, pady=5, sticky="e")
-#         ctk.CTkLabel(self.stats_frame, text="Win Rate:").grid(row=3, column=0, padx=10, pady=5, sticky="w")
-#         self.win_rate_value = ctk.CTkLabel(self.stats_frame, text="N/A")
-#         self.win_rate_value.grid(row=3, column=1, padx=10, pady=5, sticky="e")
-#         ctk.CTkLabel(self.stats_frame, text="Avg Profit/Trade:").grid(row=4, column=0, padx=10, pady=5, sticky="w")
-#         self.avg_profit_value = ctk.CTkLabel(self.stats_frame, text="$0.00")
-#         self.avg_profit_value.grid(row=4, column=1, padx=10, pady=5, sticky="e")
-#         ctk.CTkLabel(self.stats_frame, text="Failed / Neutralized:", text_color="gray").grid(row=5, column=0, padx=10, pady=5, sticky="w")
-#         self.failed_value = ctk.CTkLabel(self.stats_frame, text="0 / 0")
-#         self.failed_value.grid(row=5, column=1, padx=10, pady=5, sticky="e")
-#         ctk.CTkLabel(self.stats_frame, text="Critical Failures:", text_color="gray").grid(row=6, column=0, padx=10, pady=5, sticky="w")
-#         self.critical_value = ctk.CTkLabel(self.stats_frame, text="0", text_color="red")
-#         self.critical_value.grid(row=6, column=1, padx=10, pady=5, sticky="e")
-#         ctk.CTkLabel(self.stats_frame, text="Runtime:").grid(row=7, column=0, padx=10, pady=5, sticky="w")
-#         self.runtime_label = ctk.CTkLabel(self.stats_frame, text="00:00:00")
-#         self.runtime_label.grid(row=7, column=1, padx=10, pady=5, sticky="e")
-        
-#         balances_tab = left_tab_view.tab("Wallet Balances")
-#         balances_tab.grid_columnconfigure(0, weight=1)
-#         balances_tab.grid_rowconfigure(0, weight=1)
-#         self.balance_frame = ctk.CTkScrollableFrame(balances_tab, label_text="")
-#         self.balance_frame.grid(row=0, column=0, padx=0, pady=0, sticky="nsew")
-
-#     def _toggle_sizing_frames(self):
-#         mode = self.sizing_mode_var.get()
-#         if mode == "fixed":
-#             self.fixed_sizing_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
-#             self.dynamic_sizing_frame.grid_remove()
-#         elif mode == "dynamic":
-#             self.fixed_sizing_frame.grid_remove()
-#             self.dynamic_sizing_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
-
-#     def create_live_operations_tab(self, tab):
-#         tab.grid_rowconfigure(2, weight=1)
-#         tab.grid_columnconfigure(0, weight=1)
-#         self.build_market_scan_panel(tab)
-#         self.build_opportunity_history_panel(tab)
-#         self.log_textbox = ctk.CTkTextbox(tab, state="disabled", font=("Courier New", 12))
-#         self.log_textbox.grid(row=2, column=0, sticky="nsew", padx=10, pady=10)
-#         self.setup_log_colors()
-
-#     def create_analysis_tab(self, tab):
-#         tab.grid_columnconfigure(1, weight=1)
-#         tab.grid_rowconfigure(1, weight=1)
-        
-#         control_frame = ctk.CTkFrame(tab)
-#         control_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
-#         refresh_button = ctk.CTkButton(control_frame, text="Load/Refresh Trade Data", command=self._on_refresh_analysis_data)
-#         refresh_button.pack(side="left", padx=10, pady=5)
-#         self.analysis_status_label = ctk.CTkLabel(control_frame, text="Waiting for session data...", text_color="gray")
-#         self.analysis_status_label.pack(side="left", padx=10, pady=5)
-
-#         left_panel = ctk.CTkScrollableFrame(tab)
-#         left_panel.grid(row=1, column=0, sticky="ns", padx=10, pady=10)
-
-#         kpi_frame = ctk.CTkFrame(left_panel)
-#         kpi_frame.pack(fill="x", expand=True, padx=5, pady=5)
-#         ctk.CTkLabel(kpi_frame, text="Trade Performance KPIs", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=5)
-#         kpi_list = ["Total Trades", "Successful Trades", "Win Rate (%)", "Net P/L ($)", "Profit Factor", "Max Drawdown ($)", "Sharpe Ratio"]
-#         for kpi_name in kpi_list:
-#             frame = ctk.CTkFrame(kpi_frame, fg_color="transparent")
-#             frame.pack(fill="x", padx=10, pady=5)
-#             ctk.CTkLabel(frame, text=f"{kpi_name}:", anchor="w").pack(side="left")
-#             value_label = ctk.CTkLabel(frame, text="N/A", anchor="e")
-#             value_label.pack(side="right")
-#             self.kpi_labels[kpi_name] = value_label
-
-#         portfolio_frame = ctk.CTkFrame(left_panel)
-#         portfolio_frame.pack(fill="x", expand=True, padx=5, pady=15)
-#         ctk.CTkLabel(portfolio_frame, text="Portfolio Performance", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=5)
-#         portfolio_list = {"Starting Value ($)": "N/A", "Current Value ($)": "N/A", "Portfolio P/L ($)": "N/A", "Portfolio Growth (%)": "N/A"}
-#         for name, default_val in portfolio_list.items():
-#             frame = ctk.CTkFrame(portfolio_frame, fg_color="transparent")
-#             frame.pack(fill="x", padx=10, pady=5)
-#             ctk.CTkLabel(frame, text=f"{name}:", anchor="w").pack(side="left")
-#             value_label = ctk.CTkLabel(frame, text=default_val, anchor="e")
-#             value_label.pack(side="right")
-#             self.portfolio_labels[name] = value_label
-        
-#         self.portfolio_asset_breakdown_frame = ctk.CTkFrame(portfolio_frame)
-#         self.portfolio_asset_breakdown_frame.pack(fill="x", expand=True, padx=10, pady=10)
-#         ctk.CTkLabel(self.portfolio_asset_breakdown_frame, text="Asset Breakdown:", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w")
-
-#         chart_tab_view = ctk.CTkTabview(tab)
-#         chart_tab_view.grid(row=1, column=1, sticky="nsew", padx=10, pady=10)
-#         chart_tab_view.add("P/L Curve")
-#         chart_tab_view.add("Profit By Symbol")
-#         chart_tab_view.add("Trade Log")
-        
-#         self.chart_frames = {
-#             "P/L Curve": chart_tab_view.tab("P/L Curve"),
-#             "Profit By Symbol": chart_tab_view.tab("Profit By Symbol"),
-#         }
-#         self.trade_log_frame = ctk.CTkScrollableFrame(chart_tab_view.tab("Trade Log"))
-#         self.trade_log_frame.pack(fill="both", expand=True)
-
-#     def build_market_scan_panel(self, parent):
-#         self.scan_outer_frame = ctk.CTkFrame(parent)
-#         self.scan_outer_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
-#         self.scan_outer_frame.grid_columnconfigure(0, weight=1)
-#         ctk.CTkLabel(self.scan_outer_frame, text="Live Market Scan", font=ctk.CTkFont(weight="bold")).pack()
-#         self.scan_frame = ctk.CTkScrollableFrame(self.scan_outer_frame, height=200)
-#         self.scan_frame.pack(fill="x", expand=True, padx=5, pady=5)
-#         if not self.bot: return
-#         self.market_data_labels: Dict[str, Dict[str, ctk.CTkLabel]] = {}
-#         clients = self.bot.exchange_manager.get_all_clients()
-#         headers = ["Symbol"] + [f"{name.capitalize()} {val}" for name in clients for val in ["Bid", "Ask"]] + ["Spread %"]
-#         self.scan_frame.grid_columnconfigure(list(range(len(headers))), weight=1)
-#         for i, header in enumerate(headers):
-#             ctk.CTkLabel(self.scan_frame, text=header, font=ctk.CTkFont(weight="bold")).grid(row=0, column=i, padx=5)
-#         for i, symbol in enumerate(self.config['trading_parameters']['symbols_to_scan']):
-#             row_index = i + 1
-#             self.market_data_labels[symbol] = {}
-#             symbol_label = ctk.CTkLabel(self.scan_frame, text=symbol, fg_color="transparent")
-#             symbol_label.grid(row=row_index, column=0, padx=5, pady=2, sticky="ew")
-#             self.market_data_labels[symbol]['symbol'] = symbol_label
-#             col_idx = 1
-#             for ex_name in clients:
-#                 for val in ["bid", "ask"]:
-#                     label = ctk.CTkLabel(self.scan_frame, text="-", fg_color="transparent")
-#                     label.grid(row=row_index, column=col_idx, padx=5, pady=2, sticky="ew")
-#                     self.market_data_labels[symbol][f"{ex_name}_{val}"] = label
-#                     col_idx += 1
-#             spread_label = ctk.CTkLabel(self.scan_frame, text="-", fg_color="transparent")
-#             spread_label.grid(row=row_index, column=col_idx, padx=5, pady=2, sticky="ew")
-#             self.market_data_labels[symbol]['spread'] = spread_label
-
-#     def build_opportunity_history_panel(self, parent):
-#         self.opp_history_frame = ctk.CTkFrame(parent)
-#         self.opp_history_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
-#         ctk.CTkLabel(self.opp_history_frame, text="Recent Profitable Opportunities", font=ctk.CTkFont(weight="bold")).pack(pady=(5,5))
-#         self.opp_history_textbox = ctk.CTkTextbox(self.opp_history_frame, state="disabled", height=120, font=("Calibri", 12))
-#         self.opp_history_textbox.pack(fill="x", expand=True, padx=5, pady=5)
-#         self.opp_history_textbox.tag_config("profit", foreground="cyan")
-    
-#     def _on_refresh_analysis_data(self):
-#         self.analysis_status_label.configure(text="Loading and analyzing trade data...")
-#         analyzer = PerformanceAnalyzer()
-        
-#         if not analyzer.load_data():
-#             self.analysis_status_label.configure(text="Could not load trade data. Run bot to generate trades.csv.", text_color="orange")
-#             return
-
-#         kpis = analyzer.calculate_kpis()
-#         for name, label in self.kpi_labels.items():
-#             value = kpis.get(name, "N/A")
-#             label.configure(text=str(value))
-#             if name == "Net P/L ($)":
-#                 try:
-#                     profit_val = float(str(value).replace("$","").replace(",",""))
-#                     label.configure(text_color="green" if profit_val >= 0 else "red")
-#                 except (ValueError, TypeError):
-#                     label.configure(text_color="gray")
-        
-#         self._embed_chart(analyzer.generate_equity_curve(), "P/L Curve")
-#         self._embed_chart(analyzer.generate_profit_by_symbol_chart(), "Profit By Symbol")
-#         self._populate_trade_log_table(analyzer.trades_df)
-#         self.analysis_status_label.configure(text="Analysis complete.", text_color="green")
-
-#     def _embed_chart(self, fig: Figure, chart_name: str):
-#         if chart_name in self.analysis_canvas_widgets and self.analysis_canvas_widgets[chart_name]:
-#             self.analysis_canvas_widgets[chart_name].get_tk_widget().destroy()
-        
-#         parent_frame = self.chart_frames.get(chart_name)
-#         if parent_frame:
-#             canvas = FigureCanvasTkAgg(fig, master=parent_frame)
-#             canvas_widget = canvas.get_tk_widget()
-#             canvas_widget.pack(side="top", fill="both", expand=True, padx=5, pady=5)
-#             canvas.draw()
-#             self.analysis_canvas_widgets[chart_name] = canvas
-    
-#     def _populate_trade_log_table(self, df: pd.DataFrame):
-#         for widget in self.trade_log_frame.winfo_children():
-#             widget.destroy()
-            
-#         headers = ['Timestamp', 'Symbol', 'Buy Ex', 'Sell Ex', 'Net Profit ($)']
-#         self.trade_log_frame.grid_columnconfigure((0,1,2,3,4), weight=1)
-#         for i, header in enumerate(headers):
-#             ctk.CTkLabel(self.trade_log_frame, text=header, font=ctk.CTkFont(weight="bold")).grid(row=0, column=i, padx=5, pady=2)
-        
-#         df_display = df[df['status'] == 'SUCCESS'].reset_index()
-#         for index, row in df_display.iterrows():
-#             ctk.CTkLabel(self.trade_log_frame, text=row['timestamp'].strftime('%Y-%m-%d %H:%M:%S')).grid(row=index+1, column=0, padx=5, pady=2, sticky="w")
-#             ctk.CTkLabel(self.trade_log_frame, text=row['symbol']).grid(row=index+1, column=1, padx=5, pady=2)
-#             ctk.CTkLabel(self.trade_log_frame, text=row['buy_exchange']).grid(row=index+1, column=2, padx=5, pady=2)
-#             ctk.CTkLabel(self.trade_log_frame, text=row['sell_exchange']).grid(row=index+1, column=3, padx=5, pady=2)
-#             profit_label = ctk.CTkLabel(self.trade_log_frame, text=f"{row['net_profit_usd']:.4f}")
-#             profit_label.grid(row=index+1, column=4, padx=5, pady=2, sticky="e")
-#             profit_label.configure(text_color="green" if row['net_profit_usd'] > 0 else "red")
-    
-#     def _update_portfolio_display(self, current_data: Dict):
-#         if not self.initial_portfolio_snapshot: return
-
-#         start_val = self.initial_portfolio_snapshot.get("total_usd_value", 0.0)
-#         current_val = current_data.get("total_usd_value", 0.0)
-#         pnl = current_val - start_val
-#         growth = (pnl / start_val * 100) if start_val > 0 else 0.0
-        
-#         self.portfolio_labels["Starting Value ($)"].configure(text=f"${start_val:,.2f}")
-#         self.portfolio_labels["Current Value ($)"].configure(text=f"${current_val:,.2f}")
-#         self.portfolio_labels["Portfolio P/L ($)"].configure(text=f"${pnl:,.2f}", text_color="green" if pnl >= 0 else "red")
-#         self.portfolio_labels["Portfolio Growth (%)"].configure(text=f"{growth:.2f}%", text_color="green" if growth >= 0 else "red")
-
-#         for widget in self.portfolio_asset_breakdown_frame.winfo_children():
-#             if not isinstance(widget, ctk.CTkLabel) or widget.cget("text") != "Asset Breakdown:":
-#                 widget.destroy()
-
-#         all_assets = sorted(list(set(self.initial_portfolio_snapshot.get("assets", {}).keys()) | set(current_data.get("assets", {}).keys())))
-#         for asset in all_assets:
-#             start_asset = self.initial_portfolio_snapshot.get("assets", {}).get(asset, {"balance": 0.0, "value_usd": 0.0})
-#             current_asset = current_data.get("assets", {}).get(asset, {"balance": 0.0, "value_usd": 0.0})
-            
-#             asset_frame = ctk.CTkFrame(self.portfolio_asset_breakdown_frame)
-#             asset_frame.pack(fill="x", pady=2)
-#             ctk.CTkLabel(asset_frame, text=asset, font=ctk.CTkFont(weight="bold"), width=60).pack(side="left", padx=5)
-#             ctk.CTkLabel(asset_frame, text=f"Start: ${start_asset['value_usd']:,.2f} ({start_asset['balance']:.4f})").pack(side="left", padx=10)
-#             ctk.CTkLabel(asset_frame, text=f"Now: ${current_asset['value_usd']:,.2f} ({current_asset['balance']:.4f})").pack(side="left", padx=10)
-    
 #     def process_queue(self):
+#         """
+#         The heart of the GUI. Processes messages from the bot engine's queue
+#         and dispatches them to the appropriate UI component for updates.
+#         """
 #         try:
-#             for _ in range(100):
+#             for _ in range(100): # Process up to 100 messages per cycle
 #                 message = self.update_queue.get_nowait()
 #                 msg_type = message.get("type")
+
 #                 if msg_type == "initial_portfolio":
 #                     self.initial_portfolio_snapshot = message['data']
-#                     self._update_portfolio_display(message['data'])
+#                     self.analysis_tab.update_portfolio_display(message['data'], self.initial_portfolio_snapshot)
 #                 elif msg_type == "portfolio_update":
-#                     self.update_balance_display(message['data']['balances'])
-#                     self._update_portfolio_display(message['data']['portfolio'])
+#                     self.left_panel.update_balance_display(message['data']['balances'])
+#                     self.analysis_tab.update_portfolio_display(message['data']['portfolio'], self.initial_portfolio_snapshot)
 #                 elif msg_type == "balance_update":
-#                     self.update_balance_display(message['data'])
+#                     self.left_panel.update_balance_display(message['data'])
 #                 elif msg_type == "log":
-#                     level = message.get("level", "INFO")
-#                     self.log_textbox.configure(state="normal")
-#                     self.log_textbox.insert("end", f"{message['message']}\n", level)
-#                     self.log_textbox.configure(state="disabled")
-#                     self.log_textbox.see("end")
+#                     self.live_ops_tab.add_log_message(message.get("level", "INFO"), message['message'])
 #                 elif msg_type == "stats":
-#                     self.update_stats_display(**message['data'])
+#                     self.left_panel.update_stats_display(**message['data'])
 #                 elif msg_type == "market_data":
-#                     self.update_market_data_display(message['data'])
+#                     self.live_ops_tab.update_market_data_display(message['data'])
 #                 elif msg_type == "opportunity_found":
-#                     self.add_opportunity_to_history(message['data'])
+#                     self.live_ops_tab.add_opportunity_to_history(message['data'])
 #                 elif msg_type == "critical_error":
 #                     messagebox.showerror("Critical Runtime Error", message['data'])
 #                 elif msg_type == "stopped":
 #                     if not (self.bot_thread and self.bot_thread.is_alive()):
 #                         self.stop_bot()
+
 #         except queue.Empty:
 #             pass
 #         finally:
 #             self.after(100, self.process_queue)
 
-#     def add_opportunity_to_history(self, data: Dict[str, Any]):
-#         symbol = data.get('symbol', 'N/A')
-#         spread = data.get('spread_pct', 0.0)
-#         timestamp = time.strftime('%H:%M:%S')
-#         log_line = f"[{timestamp}] {symbol:<10} | Spread: {spread:.3f}%\n"
-#         self.opp_history_textbox.configure(state="normal")
-#         self.opp_history_textbox.insert("1.0", log_line, "profit")
-#         self.opp_history_textbox.configure(state="disabled")
-
-#     def setup_log_colors(self):
-#         self.log_textbox.tag_config("INFO", foreground="white")
-#         self.log_textbox.tag_config("WARNING", foreground="yellow")
-#         self.log_textbox.tag_config("ERROR", foreground="red")
-#         self.log_textbox.tag_config("CRITICAL", foreground="#ff4d4d")
-#         self.log_textbox.tag_config("TRADE", foreground="cyan")
-#         self.log_textbox.tag_config("SUCCESS", foreground="green")
-
 #     def start_bot(self):
+#         """Handles the logic for starting the arbitrage bot thread."""
 #         if not self.bot:
 #             messagebox.showerror("Error", "Bot could not be started.")
 #             return
         
+#         # 1. Get and validate settings from the GUI
 #         try:
-#             sizing_mode = self.sizing_mode_var.get()
-#             self.bot.config['trading_parameters']['sizing_mode'] = sizing_mode
+#             params = self.left_panel.get_start_parameters()
+#             self.bot.config['trading_parameters'].update(params)
             
-#             if sizing_mode == 'fixed':
-#                 trade_size = float(self.trade_size_entry.get())
-#                 if trade_size <= 0: raise ValueError("Fixed trade size must be positive.")
-#                 self.bot.config['trading_parameters']['trade_size_usdt'] = trade_size
-#                 self.logger.info(f"Sizing Mode: FIXED @ ${trade_size:.2f}")
-#             else: 
-#                 pct = float(self.dynamic_pct_entry.get())
-#                 max_size = float(self.dynamic_max_entry.get())
-#                 if not (0 < pct <= 100): raise ValueError("Percentage must be between 0 and 100.")
-#                 if max_size <= 0: raise ValueError("Max size must be positive.")
-#                 self.bot.config['trading_parameters']['dynamic_size_percentage'] = pct
-#                 self.bot.config['trading_parameters']['dynamic_size_max_usdt'] = max_size
-#                 self.logger.info(f"Sizing Mode: DYNAMIC ({pct}% of balance, max ${max_size:.2f})")
+#             self.logger.info(f"--- Starting New Session ---")
+#             self.logger.info(f"Mode: {'DRY RUN (SIMULATION)' if params['dry_run'] else 'LIVE TRADING'}")
             
+#             if params['sizing_mode'] == 'fixed':
+#                  self.logger.info(f"Sizing Mode: FIXED @ ${params['trade_size_usdt']:.2f}")
+#             else:
+#                  self.logger.info(f"Sizing Mode: DYNAMIC ({params['dynamic_size_percentage']}% of balance, max ${params['dynamic_size_max_usdt']:.2f})")
+            
+#             self.logger.info(f"Symbols: {', '.join(params['selected_symbols'])}")
+
 #         except (ValueError, TypeError) as e:
-#             messagebox.showerror("Invalid Input", f"Please enter valid numbers for sizing parameters.\n\n{e}")
+#             messagebox.showerror("Invalid Input", str(e))
 #             return
 
-#         is_dry_run = self.dry_run_checkbox.get() == 1
-#         self.bot.config['trading_parameters']['dry_run'] = is_dry_run
-#         selected_symbols = [symbol for symbol, checkbox in self.symbol_checkboxes.items() if checkbox.get() == 1]
-#         if not selected_symbols:
-#             messagebox.showerror("Invalid Input", "Please select at least one symbol to trade.")
-#             return
-        
-#         self.logger.info(f"--- Starting New Session ---")
-#         self.logger.info(f"Mode: {'DRY RUN (SIMULATION)' if is_dry_run else 'LIVE TRADING'}")
-#         self.logger.info(f"Symbols: {', '.join(selected_symbols)}")
+#         # 2. Disable UI controls
+#         self.left_panel.set_controls_state(False)
 
-#         self.start_button.configure(state="disabled")
-#         self.stop_button.configure(state="normal")
-#         for radio in [self.fixed_radio, self.dynamic_radio]: radio.configure(state="disabled")
-#         self.trade_size_entry.configure(state="disabled")
-#         self.dynamic_pct_entry.configure(state="disabled")
-#         self.dynamic_max_entry.configure(state="disabled")
-#         self.dry_run_checkbox.configure(state="disabled")
-#         for checkbox in self.symbol_checkboxes.values():
-#             checkbox.configure(state="disabled")
-
+#         # 3. Reset bot state and start the thread
 #         self.initial_portfolio_snapshot = None 
 #         with self.bot.state_lock:
 #             self.bot.session_profit, self.bot.trade_count, self.bot.successful_trades = 0.0, 0, 0
 #             self.bot.failed_trades, self.bot.neutralized_trades, self.bot.critical_failures = 0, 0, 0
-#         self.update_stats_display(**self.bot._get_current_stats())
-#         self.bot_thread = threading.Thread(target=self.bot.run, args=(selected_symbols,), daemon=True)
+#         self.left_panel.update_stats_display(**self.bot._get_current_stats())
+        
+#         self.bot_thread = threading.Thread(
+#             target=self.bot.run, 
+#             args=(params['selected_symbols'],), 
+#             daemon=True
+#         )
 #         self.bot_thread.start()
 #         self.update_runtime_clock()
 
 #     def stop_bot(self):
-#         self.start_button.configure(state="normal")
-#         self.stop_button.configure(state="disabled")
-#         for radio in [self.fixed_radio, self.dynamic_radio]: radio.configure(state="normal")
-#         self.trade_size_entry.configure(state="normal")
-#         self.dynamic_pct_entry.configure(state="normal")
-#         self.dynamic_max_entry.configure(state="normal")
-#         self.dry_run_checkbox.configure(state="normal")
-#         for checkbox in self.symbol_checkboxes.values():
-#             checkbox.configure(state="normal")
-
-#         self.status_label.configure(text="Status: STOPPING...", text_color="orange")
+#         """Handles the logic for stopping the arbitrage bot."""
+#         self.left_panel.set_status("STOPPING...", "orange")
 #         if self.bot:
 #             self.bot.stop()
 #             if self.bot_thread and self.bot_thread.is_alive():
 #                 self.logger.info("Waiting for bot thread to terminate...")
 #                 self.bot_thread.join(timeout=10)
-#         self.status_label.configure(text="Status: STOPPED", text_color="red")
-#         self.runtime_label.configure(text="00:00:00")
+        
+#         self.left_panel.set_controls_state(True)
+#         self.left_panel.set_status("STOPPED", "red")
+#         self.left_panel.update_runtime_clock(0) # Reset clock display
 #         self.logger.info("Bot shutdown complete.")
 
-#     def update_stats_display(self, trades: int, successful: int, failed: int, neutralized: int, critical: int, profit: float):
-#         self.trades_value.configure(text=f"{trades}")
-#         completed_trades = successful + failed + neutralized
-#         win_rate = (successful / completed_trades * 100) if completed_trades > 0 else 0
-#         avg_profit = (profit / successful) if successful > 0 else 0
-#         self.win_rate_value.configure(text=f"{win_rate:.2f}%")
-#         self.avg_profit_value.configure(text=f"${avg_profit:,.4f}")
-#         profit_color = "green" if profit >= 0 else "red"
-#         self.profit_value.configure(text=f"${profit:,.2f}", text_color=profit_color)
-#         self.failed_value.configure(text=f"{failed} / {neutralized}")
-#         self.critical_value.configure(text=f"{critical}")
-
 #     def update_runtime_clock(self):
+#         """Periodically updates the runtime clock on the GUI."""
 #         if self.bot and self.bot.running:
 #             uptime_seconds = int(time.time() - self.bot.start_time)
-#             hours, remainder = divmod(uptime_seconds, 3600)
-#             minutes, seconds = divmod(remainder, 60)
-#             self.runtime_label.configure(text=f"{hours:02}:{minutes:02}:{seconds:02}")
+#             self.left_panel.update_runtime_clock(uptime_seconds)
 #             self.after(1000, self.update_runtime_clock)
-    
-#     def update_balance_display(self, balance_data: Dict[str, Any]):
-#         """
-#         Rewrites the balance frame to display balances in a dynamic grid/table format.
-#         """
-#         # 1. Clear the previous content
-#         for widget in self.balance_frame.winfo_children():
-#             widget.destroy()
-
-#         # 2. Collect all unique assets and exchanges
-#         all_assets = set()
-#         exchange_names = sorted(balance_data.keys())
-#         for ex_name in exchange_names:
-#             all_assets.update(balance_data[ex_name].keys())
-        
-#         sorted_assets = sorted(list(all_assets))
-
-#         # 3. Configure the grid layout
-#         num_cols = len(exchange_names) + 1
-#         self.balance_frame.grid_columnconfigure(list(range(num_cols)), weight=1)
-
-#         # 4. Create Headers
-#         # Empty top-left corner
-#         ctk.CTkLabel(self.balance_frame, text="").grid(row=0, column=0) 
-#         for col_idx, ex_name in enumerate(exchange_names, 1):
-#             header = ctk.CTkLabel(self.balance_frame, text=ex_name.capitalize(), font=ctk.CTkFont(weight="bold"))
-#             header.grid(row=0, column=col_idx, padx=5, pady=2, sticky="ew")
-
-#         # 5. Populate the grid with data
-#         for row_idx, asset in enumerate(sorted_assets, 1):
-#             # Asset name column
-#             asset_label = ctk.CTkLabel(self.balance_frame, text=asset, font=ctk.CTkFont(weight="bold"), anchor="w")
-#             asset_label.grid(row=row_idx, column=0, padx=5, pady=2, sticky="w")
-
-#             # Balance data for each exchange
-#             for col_idx, ex_name in enumerate(exchange_names, 1):
-#                 balance = balance_data.get(ex_name, {}).get(asset, 0.0)
-                
-#                 # Check if balance is a valid number
-#                 balance_val = balance if isinstance(balance, (int, float)) else 0.0
-                
-#                 # Use a smaller font for the numbers to fit more
-#                 balance_label = ctk.CTkLabel(self.balance_frame, text=f"{balance_val:.4f}", font=ctk.CTkFont(size=11), anchor="e")
-#                 balance_label.grid(row=row_idx, column=col_idx, padx=5, pady=2, sticky="ew")
-
-#     def update_market_data_display(self, data: Dict[str, Any]):
-#         if not self.bot: return
-#         try:
-#             symbol = data.get('symbol')
-#             if hasattr(self, 'market_data_labels') and self.market_data_labels and symbol in self.market_data_labels:
-#                 labels = self.market_data_labels[symbol]
-#                 clients = self.bot.exchange_manager.get_all_clients()
-                
-#                 for ex_name in clients:
-#                     bid_val = data.get(f'{ex_name}_bid')
-#                     ask_val = data.get(f'{ex_name}_ask')
-#                     if f'{ex_name}_bid' in labels: labels[f'{ex_name}_bid'].configure(text=f"{bid_val:.4f}" if bid_val is not None else "-")
-#                     if f'{ex_name}_ask' in labels: labels[f'{ex_name}_ask'].configure(text=f"{ask_val:.4f}" if ask_val is not None else "-")
-
-#                 spread_pct = data.get('spread_pct')
-#                 is_profitable = data.get('is_profitable', False)
-#                 spread_label = labels['spread']
-                
-#                 if spread_pct is not None:
-#                     default_text_color = ctk.ThemeManager.theme["CTkLabel"]["text_color"]
-#                     spread_color = "green" if spread_pct > 0 else "red"
-#                     if spread_pct == 0: spread_color = default_text_color
-#                     spread_label.configure(text=f"{spread_pct:.3f}%", text_color=spread_color)
-#                 else:
-#                     spread_label.configure(text="-")
-
-#                 highlight_color = "#1E4D2B" if is_profitable else "transparent" 
-                
-#                 # Highlight the entire row
-#                 for label_widget in labels.values():
-#                    label_widget.configure(fg_color=highlight_color)
-
-#         except Exception as e:
-#             self.logger.warning(f"Failed to update GUI for market data. Error: {e}", exc_info=False)
-
-
-# # # gui_application.py
-
-# # import threading
-# # import queue
-# # import logging
-# # import time
-# # from typing import Any, Dict, List, Optional
-# # import customtkinter as ctk
-# # from tkinter import messagebox
-# # from matplotlib.figure import Figure
-# # from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-# # import pandas as pd
-
-# # from bot_engine import ArbitrageBot
-# # from utils import ConfigError, ExchangeInitError
-# # from performance_analyzer import PerformanceAnalyzer
-
-# # class QueueHandler(logging.Handler):
-# #     def __init__(self, queue: queue.Queue):
-# #         super().__init__()
-# #         self.queue = queue
-# #     def emit(self, record):
-# #         self.queue.put({"type": "log", "level": record.levelname, "message": self.format(record)})
-
-# # class App(ctk.CTk):
-# #     def __init__(self, config: Dict[str, Any], exchanges_config: Dict[str, Any]):
-# #         super().__init__()
-# #         self.title("Arbitrage Bot Control Center")
-# #         self.geometry("1600x900")
-# #         ctk.set_appearance_mode("dark")
-        
-# #         self.config = config
-# #         self.update_queue: queue.Queue = queue.Queue()
-# #         self.logger = logging.getLogger()
-# #         self.add_gui_handler_to_logger()
-
-# #         self.bot: Optional[ArbitrageBot] = None
-# #         self.bot_thread: Optional[threading.Thread] = None
-# #         self.symbol_checkboxes: Dict[str, ctk.CTkCheckBox] = {}
-# #         self.kpi_labels: Dict[str, ctk.CTkLabel] = {}
-# #         self.portfolio_labels: Dict[str, ctk.CTkLabel] = {}
-# #         self.analysis_canvas_widgets: Dict[str, Any] = {}
-# #         self.initial_portfolio_snapshot: Optional[Dict[str, Any]] = None
-        
-# #         try:
-# #             self.bot = ArbitrageBot(config, exchanges_config, self.update_queue)
-# #         except (ConfigError, ExchangeInitError) as e:
-# #             messagebox.showerror("Initialization Failed", str(e))
-        
-# #         self.grid_columnconfigure(1, weight=1)
-# #         self.grid_rowconfigure(0, weight=1)
-        
-# #         self.create_widgets()
-
-# #         if not self.bot:
-# #             self.logger.critical("Bot initialization failed. Please check config and restart.")
-# #             self.start_button.configure(state="disabled")
-
-# #         self.process_queue()
-
-# #     def add_gui_handler_to_logger(self):
-# #         queue_handler = QueueHandler(self.update_queue)
-# #         queue_handler.setFormatter(logging.Formatter('[%(levelname)s] %(message)s'))
-# #         logging.getLogger().addHandler(queue_handler)
-
-# #     def create_widgets(self):
-# #         self.left_frame = ctk.CTkFrame(self, width=320, corner_radius=0)
-# #         self.left_frame.grid(row=0, column=0, sticky="nsw")
-        
-# #         self.right_frame = ctk.CTkFrame(self)
-# #         self.right_frame.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
-# #         self.right_frame.grid_rowconfigure(0, weight=1)
-# #         self.right_frame.grid_columnconfigure(0, weight=1)
-
-# #         self.tab_view = ctk.CTkTabview(self.right_frame)
-# #         self.tab_view.pack(expand=True, fill="both", padx=5, pady=5)
-# #         self.tab_view.add("Live Operations")
-# #         self.tab_view.add("Performance Analysis")
-
-# #         self.create_live_operations_tab(self.tab_view.tab("Live Operations"))
-# #         self.create_analysis_tab(self.tab_view.tab("Performance Analysis"))
-# #         self.populate_left_frame()
-
-# #     def populate_left_frame(self):
-# #         self.left_frame.grid_rowconfigure(4, weight=1)
-# #         ctk.CTkLabel(self.left_frame, text="Arbitrage Bot", font=ctk.CTkFont(size=20, weight="bold")).grid(row=0, column=0, padx=20, pady=(20, 10))
-        
-# #         control_frame = ctk.CTkFrame(self.left_frame)
-# #         control_frame.grid(row=1, column=0, padx=20, pady=(10,0), sticky="ew")
-# #         self.start_button = ctk.CTkButton(control_frame, text="Start Bot", command=self.start_bot)
-# #         self.start_button.pack(side="left", expand=True, padx=5, pady=5)
-# #         self.stop_button = ctk.CTkButton(control_frame, text="Stop Bot", command=self.stop_bot, state="disabled")
-# #         self.stop_button.pack(side="left", expand=True, padx=5, pady=5)
-        
-# #         sizing_frame = ctk.CTkFrame(self.left_frame)
-# #         sizing_frame.grid(row=2, column=0, padx=20, pady=10, sticky="ew")
-# #         sizing_frame.grid_columnconfigure(0, weight=1)
-        
-# #         ctk.CTkLabel(sizing_frame, text="Sizing Mode", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, columnspan=2, pady=(5,0))
-# #         self.sizing_mode_var = ctk.StringVar(value=self.config['trading_parameters'].get('sizing_mode', 'fixed'))
-        
-# #         self.fixed_radio = ctk.CTkRadioButton(sizing_frame, text="Fixed", variable=self.sizing_mode_var, value="fixed", command=self._toggle_sizing_frames)
-# #         self.fixed_radio.grid(row=1, column=0, padx=(10,5), pady=5, sticky="w")
-# #         self.dynamic_radio = ctk.CTkRadioButton(sizing_frame, text="Dynamic", variable=self.sizing_mode_var, value="dynamic", command=self._toggle_sizing_frames)
-# #         self.dynamic_radio.grid(row=1, column=1, padx=(5,10), pady=5, sticky="w")
-
-# #         self.fixed_sizing_frame = ctk.CTkFrame(sizing_frame)
-# #         self.fixed_sizing_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
-# #         self.fixed_sizing_frame.grid_columnconfigure(1, weight=1)
-# #         ctk.CTkLabel(self.fixed_sizing_frame, text="Size (USDT):").grid(row=0, column=0, padx=10, pady=5, sticky="w")
-# #         self.trade_size_entry = ctk.CTkEntry(self.fixed_sizing_frame)
-# #         self.trade_size_entry.grid(row=0, column=1, padx=10, pady=5, sticky="ew")
-# #         self.trade_size_entry.insert(0, str(self.config['trading_parameters'].get('trade_size_usdt', 20.0)))
-        
-# #         self.dynamic_sizing_frame = ctk.CTkFrame(sizing_frame)
-# #         self.dynamic_sizing_frame.grid_columnconfigure(1, weight=1)
-# #         ctk.CTkLabel(self.dynamic_sizing_frame, text="Balance (%):").grid(row=0, column=0, padx=10, pady=5, sticky="w")
-# #         self.dynamic_pct_entry = ctk.CTkEntry(self.dynamic_sizing_frame)
-# #         self.dynamic_pct_entry.grid(row=0, column=1, padx=10, pady=5, sticky="ew")
-# #         self.dynamic_pct_entry.insert(0, str(self.config['trading_parameters'].get('dynamic_size_percentage', 5.0)))
-        
-# #         ctk.CTkLabel(self.dynamic_sizing_frame, text="Max Size (USDT):").grid(row=1, column=0, padx=10, pady=5, sticky="w")
-# #         self.dynamic_max_entry = ctk.CTkEntry(self.dynamic_sizing_frame)
-# #         self.dynamic_max_entry.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
-# #         self.dynamic_max_entry.insert(0, str(self.config['trading_parameters'].get('dynamic_size_max_usdt', 100.0)))
-
-# #         self.dry_run_checkbox = ctk.CTkCheckBox(sizing_frame, text="Dry Run (Simulation Mode)")
-# #         self.dry_run_checkbox.grid(row=4, column=0, columnspan=2, padx=10, pady=10, sticky="w")
-# #         if self.config['trading_parameters'].get('dry_run', True):
-# #             self.dry_run_checkbox.select()
-        
-# #         self._toggle_sizing_frames()
-            
-# #         symbol_frame = ctk.CTkFrame(self.left_frame)
-# #         symbol_frame.grid(row=3, column=0, padx=20, pady=10, sticky="nsew")
-# #         ctk.CTkLabel(symbol_frame, text="Symbol Selection", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=(5,0))
-# #         symbol_scroll_frame = ctk.CTkScrollableFrame(symbol_frame, height=150)
-# #         symbol_scroll_frame.pack(fill="x", expand=True, padx=5, pady=5)
-# #         for symbol in self.config['trading_parameters']['symbols_to_scan']:
-# #             checkbox = ctk.CTkCheckBox(symbol_scroll_frame, text=symbol)
-# #             checkbox.pack(anchor="w", padx=10, pady=2)
-# #             checkbox.select()
-# #             self.symbol_checkboxes[symbol] = checkbox
-            
-# #         left_tab_view = ctk.CTkTabview(self.left_frame)
-# #         left_tab_view.grid(row=4, column=0, padx=20, pady=10, sticky="nsew")
-# #         left_tab_view.add("Session Stats")
-# #         left_tab_view.add("Wallet Balances")
-
-# #         stats_tab = left_tab_view.tab("Session Stats")
-# #         self.stats_frame = ctk.CTkFrame(stats_tab, fg_color="transparent")
-# #         self.stats_frame.pack(fill="both", expand=True, padx=5, pady=5)
-# #         self.stats_frame.grid_columnconfigure(1, weight=1)
-        
-# #         self.status_label = ctk.CTkLabel(self.stats_frame, text="Status: STOPPED", text_color="red", font=ctk.CTkFont(weight="bold"))
-# #         self.status_label.grid(row=0, column=0, columnspan=2, padx=10, pady=(5,10))
-# #         ctk.CTkLabel(self.stats_frame, text="Session P/L:").grid(row=1, column=0, padx=10, pady=5, sticky="w")
-# #         self.profit_value = ctk.CTkLabel(self.stats_frame, text="$0.00")
-# #         self.profit_value.grid(row=1, column=1, padx=10, pady=5, sticky="e")
-# #         ctk.CTkLabel(self.stats_frame, text="Total Trades:").grid(row=2, column=0, padx=10, pady=5, sticky="w")
-# #         self.trades_value = ctk.CTkLabel(self.stats_frame, text="0")
-# #         self.trades_value.grid(row=2, column=1, padx=10, pady=5, sticky="e")
-# #         ctk.CTkLabel(self.stats_frame, text="Win Rate:").grid(row=3, column=0, padx=10, pady=5, sticky="w")
-# #         self.win_rate_value = ctk.CTkLabel(self.stats_frame, text="N/A")
-# #         self.win_rate_value.grid(row=3, column=1, padx=10, pady=5, sticky="e")
-# #         ctk.CTkLabel(self.stats_frame, text="Avg Profit/Trade:").grid(row=4, column=0, padx=10, pady=5, sticky="w")
-# #         self.avg_profit_value = ctk.CTkLabel(self.stats_frame, text="$0.00")
-# #         self.avg_profit_value.grid(row=4, column=1, padx=10, pady=5, sticky="e")
-# #         ctk.CTkLabel(self.stats_frame, text="Failed / Neutralized:", text_color="gray").grid(row=5, column=0, padx=10, pady=5, sticky="w")
-# #         self.failed_value = ctk.CTkLabel(self.stats_frame, text="0 / 0")
-# #         self.failed_value.grid(row=5, column=1, padx=10, pady=5, sticky="e")
-# #         ctk.CTkLabel(self.stats_frame, text="Critical Failures:", text_color="gray").grid(row=6, column=0, padx=10, pady=5, sticky="w")
-# #         self.critical_value = ctk.CTkLabel(self.stats_frame, text="0", text_color="red")
-# #         self.critical_value.grid(row=6, column=1, padx=10, pady=5, sticky="e")
-# #         ctk.CTkLabel(self.stats_frame, text="Runtime:").grid(row=7, column=0, padx=10, pady=5, sticky="w")
-# #         self.runtime_label = ctk.CTkLabel(self.stats_frame, text="00:00:00")
-# #         self.runtime_label.grid(row=7, column=1, padx=10, pady=5, sticky="e")
-        
-# #         balances_tab = left_tab_view.tab("Wallet Balances")
-# #         balances_tab.grid_columnconfigure(0, weight=1)
-# #         balances_tab.grid_rowconfigure(0, weight=1)
-# #         self.balance_frame = ctk.CTkScrollableFrame(balances_tab, label_text="")
-# #         self.balance_frame.grid(row=0, column=0, padx=0, pady=0, sticky="nsew")
-
-# #     def _toggle_sizing_frames(self):
-# #         mode = self.sizing_mode_var.get()
-# #         if mode == "fixed":
-# #             self.fixed_sizing_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
-# #             self.dynamic_sizing_frame.grid_remove()
-# #         elif mode == "dynamic":
-# #             self.fixed_sizing_frame.grid_remove()
-# #             self.dynamic_sizing_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
-
-# #     def create_live_operations_tab(self, tab):
-# #         tab.grid_rowconfigure(2, weight=1)
-# #         tab.grid_columnconfigure(0, weight=1)
-# #         self.build_market_scan_panel(tab)
-# #         self.build_opportunity_history_panel(tab)
-# #         self.log_textbox = ctk.CTkTextbox(tab, state="disabled", font=("Courier New", 12))
-# #         self.log_textbox.grid(row=2, column=0, sticky="nsew", padx=10, pady=10)
-# #         self.setup_log_colors()
-
-# #     def create_analysis_tab(self, tab):
-# #         tab.grid_columnconfigure(1, weight=1)
-# #         tab.grid_rowconfigure(1, weight=1)
-        
-# #         control_frame = ctk.CTkFrame(tab)
-# #         control_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
-# #         refresh_button = ctk.CTkButton(control_frame, text="Load/Refresh Trade Data", command=self._on_refresh_analysis_data)
-# #         refresh_button.pack(side="left", padx=10, pady=5)
-# #         self.analysis_status_label = ctk.CTkLabel(control_frame, text="Waiting for session data...", text_color="gray")
-# #         self.analysis_status_label.pack(side="left", padx=10, pady=5)
-
-# #         left_panel = ctk.CTkScrollableFrame(tab)
-# #         left_panel.grid(row=1, column=0, sticky="ns", padx=10, pady=10)
-
-# #         kpi_frame = ctk.CTkFrame(left_panel)
-# #         kpi_frame.pack(fill="x", expand=True, padx=5, pady=5)
-# #         ctk.CTkLabel(kpi_frame, text="Trade Performance KPIs", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=5)
-# #         kpi_list = ["Total Trades", "Successful Trades", "Win Rate (%)", "Net P/L ($)", "Profit Factor", "Max Drawdown ($)", "Sharpe Ratio"]
-# #         for kpi_name in kpi_list:
-# #             frame = ctk.CTkFrame(kpi_frame, fg_color="transparent")
-# #             frame.pack(fill="x", padx=10, pady=5)
-# #             ctk.CTkLabel(frame, text=f"{kpi_name}:", anchor="w").pack(side="left")
-# #             value_label = ctk.CTkLabel(frame, text="N/A", anchor="e")
-# #             value_label.pack(side="right")
-# #             self.kpi_labels[kpi_name] = value_label
-
-# #         portfolio_frame = ctk.CTkFrame(left_panel)
-# #         portfolio_frame.pack(fill="x", expand=True, padx=5, pady=15)
-# #         ctk.CTkLabel(portfolio_frame, text="Portfolio Performance", font=ctk.CTkFont(weight="bold")).pack(anchor="w", padx=10, pady=5)
-# #         portfolio_list = {"Starting Value ($)": "N/A", "Current Value ($)": "N/A", "Portfolio P/L ($)": "N/A", "Portfolio Growth (%)": "N/A"}
-# #         for name, default_val in portfolio_list.items():
-# #             frame = ctk.CTkFrame(portfolio_frame, fg_color="transparent")
-# #             frame.pack(fill="x", padx=10, pady=5)
-# #             ctk.CTkLabel(frame, text=f"{name}:", anchor="w").pack(side="left")
-# #             value_label = ctk.CTkLabel(frame, text=default_val, anchor="e")
-# #             value_label.pack(side="right")
-# #             self.portfolio_labels[name] = value_label
-        
-# #         self.portfolio_asset_breakdown_frame = ctk.CTkFrame(portfolio_frame)
-# #         self.portfolio_asset_breakdown_frame.pack(fill="x", expand=True, padx=10, pady=10)
-# #         ctk.CTkLabel(self.portfolio_asset_breakdown_frame, text="Asset Breakdown:", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w")
-
-# #         chart_tab_view = ctk.CTkTabview(tab)
-# #         chart_tab_view.grid(row=1, column=1, sticky="nsew", padx=10, pady=10)
-# #         chart_tab_view.add("P/L Curve")
-# #         chart_tab_view.add("Profit By Symbol")
-# #         chart_tab_view.add("Trade Log")
-        
-# #         self.chart_frames = {
-# #             "P/L Curve": chart_tab_view.tab("P/L Curve"),
-# #             "Profit By Symbol": chart_tab_view.tab("Profit By Symbol"),
-# #         }
-# #         self.trade_log_frame = ctk.CTkScrollableFrame(chart_tab_view.tab("Trade Log"))
-# #         self.trade_log_frame.pack(fill="both", expand=True)
-
-# #     def build_market_scan_panel(self, parent):
-# #         self.scan_outer_frame = ctk.CTkFrame(parent)
-# #         self.scan_outer_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
-# #         self.scan_outer_frame.grid_columnconfigure(0, weight=1)
-# #         ctk.CTkLabel(self.scan_outer_frame, text="Live Market Scan", font=ctk.CTkFont(weight="bold")).pack()
-# #         self.scan_frame = ctk.CTkScrollableFrame(self.scan_outer_frame, height=200)
-# #         self.scan_frame.pack(fill="x", expand=True, padx=5, pady=5)
-# #         if not self.bot: return
-# #         self.market_data_labels: Dict[str, Dict[str, ctk.CTkLabel]] = {}
-# #         clients = self.bot.exchange_manager.get_all_clients()
-# #         headers = ["Symbol"] + [f"{name.capitalize()} {val}" for name in clients for val in ["Bid", "Ask"]] + ["Spread %"]
-# #         self.scan_frame.grid_columnconfigure(list(range(len(headers))), weight=1)
-# #         for i, header in enumerate(headers):
-# #             ctk.CTkLabel(self.scan_frame, text=header, font=ctk.CTkFont(weight="bold")).grid(row=0, column=i, padx=5)
-# #         for i, symbol in enumerate(self.config['trading_parameters']['symbols_to_scan']):
-# #             row_index = i + 1
-# #             self.market_data_labels[symbol] = {}
-# #             symbol_label = ctk.CTkLabel(self.scan_frame, text=symbol, fg_color="transparent")
-# #             symbol_label.grid(row=row_index, column=0, padx=5, pady=2, sticky="ew")
-# #             self.market_data_labels[symbol]['symbol'] = symbol_label
-# #             col_idx = 1
-# #             for ex_name in clients:
-# #                 for val in ["bid", "ask"]:
-# #                     label = ctk.CTkLabel(self.scan_frame, text="-", fg_color="transparent")
-# #                     label.grid(row=row_index, column=col_idx, padx=5, pady=2, sticky="ew")
-# #                     self.market_data_labels[symbol][f"{ex_name}_{val}"] = label
-# #                     col_idx += 1
-# #             spread_label = ctk.CTkLabel(self.scan_frame, text="-", fg_color="transparent")
-# #             spread_label.grid(row=row_index, column=col_idx, padx=5, pady=2, sticky="ew")
-# #             self.market_data_labels[symbol]['spread'] = spread_label
-
-# #     def build_opportunity_history_panel(self, parent):
-# #         self.opp_history_frame = ctk.CTkFrame(parent)
-# #         self.opp_history_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
-# #         ctk.CTkLabel(self.opp_history_frame, text="Recent Profitable Opportunities", font=ctk.CTkFont(weight="bold")).pack(pady=(5,5))
-# #         self.opp_history_textbox = ctk.CTkTextbox(self.opp_history_frame, state="disabled", height=120, font=("Calibri", 12))
-# #         self.opp_history_textbox.pack(fill="x", expand=True, padx=5, pady=5)
-# #         self.opp_history_textbox.tag_config("profit", foreground="cyan")
-    
-# #     def _on_refresh_analysis_data(self):
-# #         self.analysis_status_label.configure(text="Loading and analyzing trade data...")
-# #         analyzer = PerformanceAnalyzer()
-        
-# #         if not analyzer.load_data():
-# #             self.analysis_status_label.configure(text="Could not load trade data. Run bot to generate trades.csv.", text_color="orange")
-# #             return
-
-# #         kpis = analyzer.calculate_kpis()
-# #         for name, label in self.kpi_labels.items():
-# #             value = kpis.get(name, "N/A")
-# #             label.configure(text=str(value))
-# #             if name == "Net P/L ($)":
-# #                 try:
-# #                     profit_val = float(str(value).replace("$","").replace(",",""))
-# #                     label.configure(text_color="green" if profit_val >= 0 else "red")
-# #                 except (ValueError, TypeError):
-# #                     label.configure(text_color="gray")
-        
-# #         self._embed_chart(analyzer.generate_equity_curve(), "P/L Curve")
-# #         self._embed_chart(analyzer.generate_profit_by_symbol_chart(), "Profit By Symbol")
-# #         self._populate_trade_log_table(analyzer.trades_df)
-# #         self.analysis_status_label.configure(text="Analysis complete.", text_color="green")
-
-# #     def _embed_chart(self, fig: Figure, chart_name: str):
-# #         if chart_name in self.analysis_canvas_widgets and self.analysis_canvas_widgets[chart_name]:
-# #             self.analysis_canvas_widgets[chart_name].get_tk_widget().destroy()
-        
-# #         parent_frame = self.chart_frames.get(chart_name)
-# #         if parent_frame:
-# #             canvas = FigureCanvasTkAgg(fig, master=parent_frame)
-# #             canvas_widget = canvas.get_tk_widget()
-# #             canvas_widget.pack(side="top", fill="both", expand=True, padx=5, pady=5)
-# #             canvas.draw()
-# #             self.analysis_canvas_widgets[chart_name] = canvas
-    
-# #     def _populate_trade_log_table(self, df: pd.DataFrame):
-# #         for widget in self.trade_log_frame.winfo_children():
-# #             widget.destroy()
-            
-# #         headers = ['Timestamp', 'Symbol', 'Buy Ex', 'Sell Ex', 'Net Profit ($)']
-# #         self.trade_log_frame.grid_columnconfigure((0,1,2,3,4), weight=1)
-# #         for i, header in enumerate(headers):
-# #             ctk.CTkLabel(self.trade_log_frame, text=header, font=ctk.CTkFont(weight="bold")).grid(row=0, column=i, padx=5, pady=2)
-        
-# #         df_display = df[df['status'] == 'SUCCESS'].reset_index()
-# #         for index, row in df_display.iterrows():
-# #             ctk.CTkLabel(self.trade_log_frame, text=row['timestamp'].strftime('%Y-%m-%d %H:%M:%S')).grid(row=index+1, column=0, padx=5, pady=2, sticky="w")
-# #             ctk.CTkLabel(self.trade_log_frame, text=row['symbol']).grid(row=index+1, column=1, padx=5, pady=2)
-# #             ctk.CTkLabel(self.trade_log_frame, text=row['buy_exchange']).grid(row=index+1, column=2, padx=5, pady=2)
-# #             ctk.CTkLabel(self.trade_log_frame, text=row['sell_exchange']).grid(row=index+1, column=3, padx=5, pady=2)
-# #             profit_label = ctk.CTkLabel(self.trade_log_frame, text=f"{row['net_profit_usd']:.4f}")
-# #             profit_label.grid(row=index+1, column=4, padx=5, pady=2, sticky="e")
-# #             profit_label.configure(text_color="green" if row['net_profit_usd'] > 0 else "red")
-    
-# #     def _update_portfolio_display(self, current_data: Dict):
-# #         if not self.initial_portfolio_snapshot: return
-
-# #         start_val = self.initial_portfolio_snapshot.get("total_usd_value", 0.0)
-# #         current_val = current_data.get("total_usd_value", 0.0)
-# #         pnl = current_val - start_val
-# #         growth = (pnl / start_val * 100) if start_val > 0 else 0.0
-        
-# #         self.portfolio_labels["Starting Value ($)"].configure(text=f"${start_val:,.2f}")
-# #         self.portfolio_labels["Current Value ($)"].configure(text=f"${current_val:,.2f}")
-# #         self.portfolio_labels["Portfolio P/L ($)"].configure(text=f"${pnl:,.2f}", text_color="green" if pnl >= 0 else "red")
-# #         self.portfolio_labels["Portfolio Growth (%)"].configure(text=f"{growth:.2f}%", text_color="green" if growth >= 0 else "red")
-
-# #         for widget in self.portfolio_asset_breakdown_frame.winfo_children():
-# #             if not isinstance(widget, ctk.CTkLabel) or widget.cget("text") != "Asset Breakdown:":
-# #                 widget.destroy()
-
-# #         all_assets = sorted(list(set(self.initial_portfolio_snapshot.get("assets", {}).keys()) | set(current_data.get("assets", {}).keys())))
-# #         for asset in all_assets:
-# #             start_asset = self.initial_portfolio_snapshot.get("assets", {}).get(asset, {"balance": 0.0, "value_usd": 0.0})
-# #             current_asset = current_data.get("assets", {}).get(asset, {"balance": 0.0, "value_usd": 0.0})
-            
-# #             asset_frame = ctk.CTkFrame(self.portfolio_asset_breakdown_frame)
-# #             asset_frame.pack(fill="x", pady=2)
-# #             ctk.CTkLabel(asset_frame, text=asset, font=ctk.CTkFont(weight="bold"), width=60).pack(side="left", padx=5)
-# #             ctk.CTkLabel(asset_frame, text=f"Start: ${start_asset['value_usd']:,.2f} ({start_asset['balance']:.4f})").pack(side="left", padx=10)
-# #             ctk.CTkLabel(asset_frame, text=f"Now: ${current_asset['value_usd']:,.2f} ({current_asset['balance']:.4f})").pack(side="left", padx=10)
-    
-# #     def process_queue(self):
-# #         try:
-# #             for _ in range(100):
-# #                 message = self.update_queue.get_nowait()
-# #                 msg_type = message.get("type")
-# #                 if msg_type == "initial_portfolio":
-# #                     self.initial_portfolio_snapshot = message['data']
-# #                     self._update_portfolio_display(message['data'])
-# #                 elif msg_type == "portfolio_update":
-# #                     self.update_balance_display(message['data']['balances'])
-# #                     self._update_portfolio_display(message['data']['portfolio'])
-# #                 elif msg_type == "balance_update":
-# #                     self.update_balance_display(message['data'])
-# #                 elif msg_type == "log":
-# #                     level = message.get("level", "INFO")
-# #                     self.log_textbox.configure(state="normal")
-# #                     self.log_textbox.insert("end", f"{message['message']}\n", level)
-# #                     self.log_textbox.configure(state="disabled")
-# #                     self.log_textbox.see("end")
-# #                 elif msg_type == "stats":
-# #                     self.update_stats_display(**message['data'])
-# #                 elif msg_type == "market_data":
-# #                     self.update_market_data_display(message['data'])
-# #                 elif msg_type == "opportunity_found":
-# #                     self.add_opportunity_to_history(message['data'])
-# #                 elif msg_type == "critical_error":
-# #                     messagebox.showerror("Critical Runtime Error", message['data'])
-# #                 elif msg_type == "stopped":
-# #                     if not (self.bot_thread and self.bot_thread.is_alive()):
-# #                         self.stop_bot()
-# #         except queue.Empty:
-# #             pass
-# #         finally:
-# #             self.after(100, self.process_queue)
-
-# #     def add_opportunity_to_history(self, data: Dict[str, Any]):
-# #         symbol = data.get('symbol', 'N/A')
-# #         spread = data.get('spread_pct', 0.0)
-# #         timestamp = time.strftime('%H:%M:%S')
-# #         log_line = f"[{timestamp}] {symbol:<10} | Spread: {spread:.3f}%\n"
-# #         self.opp_history_textbox.configure(state="normal")
-# #         self.opp_history_textbox.insert("1.0", log_line, "profit")
-# #         self.opp_history_textbox.configure(state="disabled")
-
-# #     def setup_log_colors(self):
-# #         self.log_textbox.tag_config("INFO", foreground="white")
-# #         self.log_textbox.tag_config("WARNING", foreground="yellow")
-# #         self.log_textbox.tag_config("ERROR", foreground="red")
-# #         self.log_textbox.tag_config("CRITICAL", foreground="#ff4d4d")
-# #         self.log_textbox.tag_config("TRADE", foreground="cyan")
-# #         self.log_textbox.tag_config("SUCCESS", foreground="green")
-
-# #     def start_bot(self):
-# #         if not self.bot:
-# #             messagebox.showerror("Error", "Bot could not be started.")
-# #             return
-        
-# #         try:
-# #             sizing_mode = self.sizing_mode_var.get()
-# #             self.bot.config['trading_parameters']['sizing_mode'] = sizing_mode
-            
-# #             if sizing_mode == 'fixed':
-# #                 trade_size = float(self.trade_size_entry.get())
-# #                 if trade_size <= 0: raise ValueError("Fixed trade size must be positive.")
-# #                 self.bot.config['trading_parameters']['trade_size_usdt'] = trade_size
-# #                 self.logger.info(f"Sizing Mode: FIXED @ ${trade_size:.2f}")
-# #             else: 
-# #                 pct = float(self.dynamic_pct_entry.get())
-# #                 max_size = float(self.dynamic_max_entry.get())
-# #                 if not (0 < pct <= 100): raise ValueError("Percentage must be between 0 and 100.")
-# #                 if max_size <= 0: raise ValueError("Max size must be positive.")
-# #                 self.bot.config['trading_parameters']['dynamic_size_percentage'] = pct
-# #                 self.bot.config['trading_parameters']['dynamic_size_max_usdt'] = max_size
-# #                 self.logger.info(f"Sizing Mode: DYNAMIC ({pct}% of balance, max ${max_size:.2f})")
-            
-# #         except (ValueError, TypeError) as e:
-# #             messagebox.showerror("Invalid Input", f"Please enter valid numbers for sizing parameters.\n\n{e}")
-# #             return
-
-# #         is_dry_run = self.dry_run_checkbox.get() == 1
-# #         self.bot.config['trading_parameters']['dry_run'] = is_dry_run
-# #         selected_symbols = [symbol for symbol, checkbox in self.symbol_checkboxes.items() if checkbox.get() == 1]
-# #         if not selected_symbols:
-# #             messagebox.showerror("Invalid Input", "Please select at least one symbol to trade.")
-# #             return
-        
-# #         self.logger.info(f"--- Starting New Session ---")
-# #         self.logger.info(f"Mode: {'DRY RUN (SIMULATION)' if is_dry_run else 'LIVE TRADING'}")
-# #         self.logger.info(f"Symbols: {', '.join(selected_symbols)}")
-
-# #         self.start_button.configure(state="disabled")
-# #         self.stop_button.configure(state="normal")
-# #         for radio in [self.fixed_radio, self.dynamic_radio]: radio.configure(state="disabled")
-# #         self.trade_size_entry.configure(state="disabled")
-# #         self.dynamic_pct_entry.configure(state="disabled")
-# #         self.dynamic_max_entry.configure(state="disabled")
-# #         self.dry_run_checkbox.configure(state="disabled")
-# #         for checkbox in self.symbol_checkboxes.values():
-# #             checkbox.configure(state="disabled")
-
-# #         self.initial_portfolio_snapshot = None 
-# #         with self.bot.state_lock:
-# #             self.bot.session_profit, self.bot.trade_count, self.bot.successful_trades = 0.0, 0, 0
-# #             self.bot.failed_trades, self.bot.neutralized_trades, self.bot.critical_failures = 0, 0, 0
-# #         self.update_stats_display(**self.bot._get_current_stats())
-# #         self.bot_thread = threading.Thread(target=self.bot.run, args=(selected_symbols,), daemon=True)
-# #         self.bot_thread.start()
-# #         self.update_runtime_clock()
-
-# #     def stop_bot(self):
-# #         self.start_button.configure(state="normal")
-# #         self.stop_button.configure(state="disabled")
-# #         for radio in [self.fixed_radio, self.dynamic_radio]: radio.configure(state="normal")
-# #         self.trade_size_entry.configure(state="normal")
-# #         self.dynamic_pct_entry.configure(state="normal")
-# #         self.dynamic_max_entry.configure(state="normal")
-# #         self.dry_run_checkbox.configure(state="normal")
-# #         for checkbox in self.symbol_checkboxes.values():
-# #             checkbox.configure(state="normal")
-
-# #         self.status_label.configure(text="Status: STOPPING...", text_color="orange")
-# #         if self.bot:
-# #             self.bot.stop()
-# #             if self.bot_thread and self.bot_thread.is_alive():
-# #                 self.logger.info("Waiting for bot thread to terminate...")
-# #                 self.bot_thread.join(timeout=10)
-# #         self.status_label.configure(text="Status: STOPPED", text_color="red")
-# #         self.runtime_label.configure(text="00:00:00")
-# #         self.logger.info("Bot shutdown complete.")
-
-# #     def update_stats_display(self, trades: int, successful: int, failed: int, neutralized: int, critical: int, profit: float):
-# #         self.trades_value.configure(text=f"{trades}")
-# #         completed_trades = successful + failed + neutralized
-# #         win_rate = (successful / completed_trades * 100) if completed_trades > 0 else 0
-# #         avg_profit = (profit / successful) if successful > 0 else 0
-# #         self.win_rate_value.configure(text=f"{win_rate:.2f}%")
-# #         self.avg_profit_value.configure(text=f"${avg_profit:,.4f}")
-# #         profit_color = "green" if profit >= 0 else "red"
-# #         self.profit_value.configure(text=f"${profit:,.2f}", text_color=profit_color)
-# #         self.failed_value.configure(text=f"{failed} / {neutralized}")
-# #         self.critical_value.configure(text=f"{critical}")
-
-# #     def update_runtime_clock(self):
-# #         if self.bot and self.bot.running:
-# #             uptime_seconds = int(time.time() - self.bot.start_time)
-# #             hours, remainder = divmod(uptime_seconds, 3600)
-# #             minutes, seconds = divmod(remainder, 60)
-# #             self.runtime_label.configure(text=f"{hours:02}:{minutes:02}:{seconds:02}")
-# #             self.after(1000, self.update_runtime_clock)
-    
-# #     def update_balance_display(self, balance_data: Dict[str, Any]):
-# #         for widget in self.balance_frame.winfo_children():
-# #             widget.destroy()
-
-# #         self.balance_frame.grid_columnconfigure(0, weight=1)
-
-# #         row_counter = 0
-# #         for ex_name, assets in sorted(balance_data.items()):
-# #             ex_label = ctk.CTkLabel(self.balance_frame, text=f"{ex_name.capitalize()}", font=ctk.CTkFont(underline=True))
-# #             ex_label.grid(row=row_counter, column=0, padx=10, pady=(8, 2), sticky="w")
-# #             row_counter += 1
-            
-# #             if not assets:
-# #                 no_funds_label = ctk.CTkLabel(self.balance_frame, text="  - No funds found", text_color="gray")
-# #                 no_funds_label.grid(row=row_counter, column=0, padx=15, sticky="w")
-# #                 row_counter += 1
-# #             else:
-# #                 for asset, amount in sorted(assets.items()):
-# #                     # Ensure amount is a number before formatting
-# #                     amount_val = amount if isinstance(amount, (int, float)) else 0.0
-# #                     asset_label = ctk.CTkLabel(self.balance_frame, text=f"  - {asset}: {amount_val:.6f}")
-# #                     asset_label.grid(row=row_counter, column=0, padx=15, pady=1, sticky="w")
-# #                     row_counter += 1
-                    
-# #     def update_market_data_display(self, data: Dict[str, Any]):
-# #         if not self.bot: return
-# #         try:
-# #             symbol = data.get('symbol')
-# #             if hasattr(self, 'market_data_labels') and self.market_data_labels and symbol in self.market_data_labels:
-# #                 labels = self.market_data_labels[symbol]
-# #                 clients = self.bot.exchange_manager.get_all_clients()
-                
-# #                 for ex_name in clients:
-# #                     bid_val = data.get(f'{ex_name}_bid')
-# #                     ask_val = data.get(f'{ex_name}_ask')
-# #                     if f'{ex_name}_bid' in labels: labels[f'{ex_name}_bid'].configure(text=f"{bid_val:.4f}" if bid_val is not None else "-")
-# #                     if f'{ex_name}_ask' in labels: labels[f'{ex_name}_ask'].configure(text=f"{ask_val:.4f}" if ask_val is not None else "-")
-
-# #                 spread_pct = data.get('spread_pct')
-# #                 is_profitable = data.get('is_profitable', False)
-# #                 spread_label = labels['spread']
-                
-# #                 if spread_pct is not None:
-# #                     default_text_color = ctk.ThemeManager.theme["CTkLabel"]["text_color"]
-# #                     spread_color = "green" if spread_pct > 0 else "red"
-# #                     if spread_pct == 0: spread_color = default_text_color
-# #                     spread_label.configure(text=f"{spread_pct:.3f}%", text_color=spread_color)
-# #                 else:
-# #                     spread_label.configure(text="-")
-
-# #                 highlight_color = "#1E4D2B" if is_profitable else "transparent" 
-                
-# #                 # Highlight the entire row
-# #                 for label_widget in labels.values():
-# #                    label_widget.configure(fg_color=highlight_color)
-
-# #         except Exception as e:
-# #             self.logger.warning(f"Failed to update GUI for market data. Error: {e}", exc_info=False)
