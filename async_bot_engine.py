@@ -59,11 +59,7 @@ class AsyncArbitrageBot:
                     continue
 
                 portfolio = await self.exchange_manager.get_portfolio_snapshot()
-<<<<<<< HEAD
-                self._log(f"Current Portfolio Value: ${portfolio.get('total_usd_value', 0.0):.2f}")
-=======
-                logging.info(f"Current Portfolio Value: ${portfolio['total_usd_value']:.2f}")
->>>>>>> parent of 4f8cb2b (Update before gui integration)
+                logging.info(f"Current Portfolio Value: ${portfolio.get('total_usd_value', 0.0):.2f}")
 
                 if self.risk_manager.check_kill_switch(portfolio):
                     self.is_running = False
@@ -78,9 +74,6 @@ class AsyncArbitrageBot:
                     self._log(f"Profitable opportunity found: Expect ${best_opportunity['profit_usd']:.4f} profit on a ${self.trade_size_usdt} trade.")
 =======
                     logging.info(f"Profitable opportunity found: Expect ${best_opportunity['profit_usd']:.4f} profit on a ${self.trade_size_usdt} trade.")
-                    
-                    # Pass the current portfolio for pre-trade checks
->>>>>>> parent of 4f8cb2b (Update before gui integration)
                     await self._execute_arbitrage(best_opportunity, portfolio)
                 else:
                     self._log("No profitable opportunities found in this cycle.")
@@ -108,17 +101,9 @@ class AsyncArbitrageBot:
             return True
 
         run_duration_s = stop_conditions.get('run_duration_s')
-<<<<<<< HEAD
         if run_duration_s is not None and (time.time() - self.start_time) >= run_duration_s:
-            self._log(f"Stop condition met: Maximum run duration ({run_duration_s}s) reached.")
+            logging.info(f"Stop condition met: Maximum run duration ({run_duration_s}s) reached.")
             return True
-=======
-        if run_duration_s is not None:
-            elapsed_time = time.time() - self.start_time
-            if elapsed_time >= run_duration_s:
-                logging.info(f"Stop condition met: Maximum run duration ({run_duration_s}s) reached.")
-                return True
->>>>>>> parent of 4f8cb2b (Update before gui integration)
         
         return False
 
@@ -191,14 +176,10 @@ class AsyncArbitrageBot:
             self._log(f"Skipping trade: Insufficient {quote_currency} on {buy_ex}. Have {buy_ex_balance}, need {self.trade_size_usdt}.", "WARNING")
             return
         if sell_ex_balance < trade_amount_base:
-<<<<<<< HEAD
-            self._log(f"Skipping trade: Insufficient {base_currency} on {sell_ex}. Have {sell_ex_balance}, need {trade_amount_base:.6f}.", "WARNING")
+            logging.warning(f"Skipping trade: Insufficient {base_currency} on {sell_ex}. Have {sell_ex_balance}, need {trade_amount_base:.6f}.")
             cooldown_key = f"sell-{base_currency}-{sell_ex}"
             self.opportunity_cooldowns[cooldown_key] = time.time() + self.cooldown_duration_s
-            self._log(f"Placed {cooldown_key} on cooldown for {self.cooldown_duration_s} seconds.")
-=======
-            logging.warning(f"Skipping trade: Insufficient {base_currency} on {sell_ex}. Have {sell_ex_balance}, need {trade_amount_base:.6f}.")
->>>>>>> parent of 4f8cb2b (Update before gui integration)
+            logging.info(f"Placed {cooldown_key} on cooldown for {self.cooldown_duration_s} seconds.")
             return
             
         self._log(f"Executing arbitrage: BUY {trade_amount_base:.6f} {symbol} on {buy_ex} and SELL on {sell_ex}")
@@ -243,32 +224,14 @@ class AsyncArbitrageBot:
         Places a reverse market order to neutralize a partially failed trade.
         """
         try:
-<<<<<<< HEAD
-            self._log(f"Attempting to place a neutralizing {side} order on {ex_id} for {amount:.6f} {symbol}.")
-            neutralize_amount = original_trade.get('filled', amount) if isinstance(original_trade, dict) else amount
-=======
             logging.info(f"Attempting to place a neutralizing {side} order on {ex_id} for {amount:.6f} {symbol}.")
-            # We use the 'filled' amount from the original trade if available, otherwise fall back to intended amount
-            neutralize_amount = original_trade.get('filled', amount)
->>>>>>> parent of 4f8cb2b (Update before gui integration)
+            neutralize_amount = original_trade.get('filled', amount) if isinstance(original_trade, dict) else amount
             if neutralize_amount > 0:
                 await self.exchange_manager.create_order(
                     ex_id=ex_id, symbol=symbol, order_type='market', side=side, amount=neutralize_amount
                 )
                 self._log(f"SUCCESSFULLY placed neutralizing {side} order on {ex_id}.", "CRITICAL")
             else:
-<<<<<<< HEAD
-                self._log("Original trade amount was 0, no neutralization needed.", "WARNING")
-        except Exception as e:
-            self._log(f"CRITICAL FAILURE: Could not neutralize trade on {ex_id}. MANUAL INTERVENTION REQUIRED. Error: {e}", "ERROR")
-
-    def stop(self):
-        """Stops the bot's run loop."""
-        self._log("Stop command received.")
-        self.is_running = False
-=======
-                logging.warning(f"Original trade amount was 0, no neutralization needed.")
+                logging.warning("Original trade amount was 0, no neutralization needed.")
         except Exception as e:
             logging.error(f"CRITICAL FAILURE: Could not neutralize trade on {ex_id}. MANUAL INTERVENTION REQUIRED. Error: {e}")
-
->>>>>>> parent of 4f8cb2b (Update before gui integration)
