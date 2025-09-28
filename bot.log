@@ -3952,3 +3952,19 @@ utils.ConfigError: CRITICAL: One or more API keys are missing from your .env fil
 2025-09-28 14:50:54,460 - INFO - [exchange_manager:31] - Initialized Binance client.
 2025-09-28 14:51:01,807 - INFO - [exchange_manager:31] - Initialized Bybit client.
 2025-09-28 14:51:01,807 - INFO - [bot_engine:40] - New bot instance created with Session ID: session_1759063861
+2025-09-28 19:25:18,921 - INFO - [main:35] - Simplified logging configured.
+2025-09-28 19:25:18,926 - CRITICAL - [main:67] - Fatal Configuration Error: CRITICAL: One or more API keys are missing from your .env file for an active exchange.
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\main.py", line 61, in <module>
+    raise ConfigError("CRITICAL: One or more API keys are missing from your .env file for an active exchange.")
+utils.ConfigError: CRITICAL: One or more API keys are missing from your .env file for an active exchange.
+2025-09-28 19:25:33,048 - INFO - [main:35] - Simplified logging configured.
+2025-09-28 19:25:35,168 - INFO - [exchange_manager:31] - Initialized Okx client.
+2025-09-28 19:25:38,532 - INFO - [exchange_manager:31] - Initialized Binance client.
+2025-09-28 19:25:46,177 - INFO - [exchange_manager:31] - Initialized Bybit client.
+2025-09-28 19:25:46,178 - INFO - [bot_engine:40] - New bot instance created with Session ID: session_1759080346
+2025-09-28 19:48:00,885 - INFO - [main:35] - Simplified logging configured.
+2025-09-28 19:48:02,659 - INFO - [exchange_manager:31] - Initialized Okx client.
+2025-09-28 19:48:06,668 - INFO - [exchange_manager:31] - Initialized Binance client.
+2025-09-28 19:48:13,842 - INFO - [exchange_manager:31] - Initialized Bybit client.
+2025-09-28 19:48:13,842 - INFO - [bot_engine:40] - New bot instance created with Session ID: session_1759081693
