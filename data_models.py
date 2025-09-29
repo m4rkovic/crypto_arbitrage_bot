@@ -33,3 +33,17 @@ class TradeLogData:
 
     def to_dict(self):
         return asdict(self)
+    
+@dataclass
+class Trade:
+    """Represents a completed or attempted trade action for logging."""
+    symbol: str
+    amount: float
+    buy_price: float
+    sell_price: float
+    buy_exchange: str
+    sell_exchange: str
+    status: str  # e.g., "SUCCESS", "DRY_RUN", "FAILED"
+        
+    def to_dict(self):
+        return asdict(self)

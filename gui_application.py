@@ -129,15 +129,16 @@ class App(ctk.CTk):
         # 1. Get and validate settings from the GUI
         try:
             params = self.left_panel.get_start_parameters()
+            # This line correctly updates the bot's config with the selected symbols
             self.bot.config['trading_parameters'].update(params)
             
             self.logger.info(f"--- Starting New Session ---")
             self.logger.info(f"Mode: {'DRY RUN (SIMULATION)' if params['dry_run'] else 'LIVE TRADING'}")
             
             if params['sizing_mode'] == 'fixed':
-                 self.logger.info(f"Sizing Mode: FIXED @ ${params['trade_size_usdt']:.2f}")
+                self.logger.info(f"Sizing Mode: FIXED @ ${params['trade_size_usdt']:.2f}")
             else:
-                 self.logger.info(f"Sizing Mode: DYNAMIC ({params['dynamic_size_percentage']}% of balance, max ${params['dynamic_size_max_usdt']:.2f})")
+                self.logger.info(f"Sizing Mode: DYNAMIC ({params['dynamic_size_percentage']}% of balance, max ${params['dynamic_size_max_usdt']:.2f})")
             
             self.logger.info(f"Symbols: {', '.join(params['selected_symbols'])}")
 
@@ -149,15 +150,12 @@ class App(ctk.CTk):
         self.left_panel.set_controls_state(False)
 
         # 3. Reset bot state and start the thread
-        self.initial_portfolio_snapshot = None 
-        with self.bot.state_lock:
-            self.bot.session_profit, self.bot.trade_count, self.bot.successful_trades = 0.0, 0, 0
-            self.bot.failed_trades, self.bot.neutralized_trades, self.bot.critical_failures = 0, 0, 0
+        self.bot.reset_session_stats() # <-- Cleaner way to reset stats
         self.left_panel.update_stats_display(**self.bot._get_current_stats())
         
         self.bot_thread = threading.Thread(
-            target=self.bot.run, 
-            args=(params['selected_symbols'],), 
+            target=self.bot.run,
+            # args=(params['selected_symbols'],), # <-- CRITICAL: This line is removed to fix the TypeError
             daemon=True
         )
         self.bot_thread.start()
@@ -179,7 +177,7 @@ class App(ctk.CTk):
 
     def update_runtime_clock(self):
         """Periodically updates the runtime clock on the GUI."""
-        if self.bot and self.bot.running:
+        if self.bot and self.bot.is_running:
             uptime_seconds = int(time.time() - self.bot.start_time)
             self.left_panel.update_runtime_clock(uptime_seconds)
             self.after(1000, self.update_runtime_clock)

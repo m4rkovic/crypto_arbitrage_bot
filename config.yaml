@@ -40,6 +40,9 @@ trading_parameters:
   scan_interval_s: 3.0
   order_monitor_timeout_s: 45
   post_trade_delay_s: 10
+  
+  update_frequency: 5
+
 
 rebalancing:
   enabled: true
@@ -50,7 +53,6 @@ rebalancing:
     ETH: 15
   default_max_inventory_percent: 8 # Max for any other asset (SOL, XRP, etc.)
   rebalance_threshold_percent: 5 # Trigger rebalance if an asset is 5% over its target
-  
 # # config.yaml
 
 # trading_parameters:

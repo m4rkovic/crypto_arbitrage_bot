@@ -3952,3 +3952,588 @@ utils.ConfigError: CRITICAL: One or more API keys are missing from your .env fil
 2025-09-28 14:50:54,460 - INFO - [exchange_manager:31] - Initialized Binance client.
 2025-09-28 14:51:01,807 - INFO - [exchange_manager:31] - Initialized Bybit client.
 2025-09-28 14:51:01,807 - INFO - [bot_engine:40] - New bot instance created with Session ID: session_1759063861
+2025-09-29 23:39:44,218 - INFO - [main:35] - Simplified logging configured.
+2025-09-29 23:39:44,223 - CRITICAL - [main:67] - Fatal Configuration Error: CRITICAL: One or more API keys are missing from your .env file for an active exchange.
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\main.py", line 61, in <module>
+    raise ConfigError("CRITICAL: One or more API keys are missing from your .env file for an active exchange.")
+utils.ConfigError: CRITICAL: One or more API keys are missing from your .env file for an active exchange.
+2025-09-29 23:40:14,266 - INFO - [main:35] - Simplified logging configured.
+2025-09-29 23:40:14,349 - CRITICAL - [main:70] - An unexpected fatal error occurred: ArbitrageBot.__init__() takes 3 positional arguments but 4 were given
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\main.py", line 63, in <module>
+    app = App(config, EXCHANGES)
+  File "D:\Dev\py\crypto_arbitrage_bot\gui_application.py", line 44, in __init__
+    self.bot = ArbitrageBot(config, exchanges_config, self.update_queue)
+               ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: ArbitrageBot.__init__() takes 3 positional arguments but 4 were given
+2025-09-29 23:55:58,347 - INFO - [main:35] - Simplified logging configured.
+2025-09-29 23:55:58,429 - INFO - [bot_engine:21] - Initializing asynchronous bot engine...
+2025-09-29 23:55:58,429 - CRITICAL - [main:70] - An unexpected fatal error occurred: TradeLogger.__init__() takes 1 positional argument but 2 were given
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\main.py", line 63, in <module>
+    app = App(config, EXCHANGES)
+  File "D:\Dev\py\crypto_arbitrage_bot\gui_application.py", line 44, in __init__
+    self.bot = ArbitrageBot(config, self.update_queue)
+               ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 28, in __init__
+    self.trade_logger = TradeLogger("trades.csv")
+                        ~~~~~~~~~~~^^^^^^^^^^^^^^
+TypeError: TradeLogger.__init__() takes 1 positional argument but 2 were given
+2025-09-29 23:57:13,510 - INFO - [main:35] - Simplified logging configured.
+2025-09-29 23:57:13,591 - INFO - [bot_engine:21] - Initializing asynchronous bot engine...
+2025-09-29 23:57:13,592 - CRITICAL - [main:70] - An unexpected fatal error occurred: 'TradeLogger' object has no attribute '_setup_logger'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\main.py", line 63, in <module>
+    app = App(config, EXCHANGES)
+  File "D:\Dev\py\crypto_arbitrage_bot\gui_application.py", line 44, in __init__
+    self.bot = ArbitrageBot(config, self.update_queue)
+               ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 28, in __init__
+    self.trade_logger = TradeLogger("trades.csv")
+                        ~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "D:\Dev\py\crypto_arbitrage_bot\trade_logger.py", line 29, in __init__
+    self.logger = self._setup_logger()
+                  ^^^^^^^^^^^^^^^^^^
+AttributeError: 'TradeLogger' object has no attribute '_setup_logger'
+2025-09-29 23:58:44,486 - INFO - [main:35] - Simplified logging configured.
+2025-09-29 23:58:44,568 - INFO - [bot_engine:21] - Initializing asynchronous bot engine...
+2025-09-29 23:58:44,570 - CRITICAL - [main:70] - An unexpected fatal error occurred: 'exchanges'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\main.py", line 63, in <module>
+    app = App(config, EXCHANGES)
+  File "D:\Dev\py\crypto_arbitrage_bot\gui_application.py", line 44, in __init__
+    self.bot = ArbitrageBot(config, self.update_queue)
+               ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 30, in __init__
+    self.exchange_manager = ExchangeManager(config['exchanges'])
+                                            ~~~~~~^^^^^^^^^^^^^
+KeyError: 'exchanges'
+2025-09-30 00:02:29,140 - INFO - [main:35] - Simplified logging configured.
+2025-09-30 00:02:29,224 - INFO - [bot_engine:23] - Initializing asynchronous bot engine...
+2025-09-30 00:02:29,225 - CRITICAL - [main:70] - An unexpected fatal error occurred: name 'os' is not defined
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\main.py", line 63, in <module>
+    app = App(config, EXCHANGES)
+  File "D:\Dev\py\crypto_arbitrage_bot\gui_application.py", line 44, in __init__
+    self.bot = ArbitrageBot(config, self.update_queue)
+               ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 35, in __init__
+    api_key = os.getenv(f'{exchange_name.upper()}_TESTNET_API_KEY')
+              ^^
+NameError: name 'os' is not defined. Did you forget to import 'os'?
+2025-09-30 00:03:25,805 - INFO - [main:35] - Simplified logging configured.
+2025-09-30 00:03:25,892 - INFO - [bot_engine:24] - Initializing asynchronous bot engine...
+2025-09-30 00:03:25,894 - INFO - [bot_engine:52] - Loaded TESTNET credentials for bybit.
+2025-09-30 00:03:25,894 - INFO - [bot_engine:52] - Loaded TESTNET credentials for binance.
+2025-09-30 00:03:25,895 - CRITICAL - [main:70] - An unexpected fatal error occurred: name 'oks' is not defined
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\main.py", line 63, in <module>
+    app = App(config, EXCHANGES)
+  File "D:\Dev\py\crypto_arbitrage_bot\gui_application.py", line 44, in __init__
+    self.bot = ArbitrageBot(config, self.update_queue)
+               ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 46, in __init__
+    passphrase = oks.getenv('OKX_TESTNET_PASSPHRASE')
+                 ^^^
+NameError: name 'oks' is not defined. Did you mean: 'os'?
+2025-09-30 00:03:33,706 - INFO - [main:35] - Simplified logging configured.
+2025-09-30 00:03:33,790 - INFO - [bot_engine:24] - Initializing asynchronous bot engine...
+2025-09-30 00:03:33,791 - INFO - [bot_engine:52] - Loaded TESTNET credentials for bybit.
+2025-09-30 00:03:33,792 - INFO - [bot_engine:52] - Loaded TESTNET credentials for binance.
+2025-09-30 00:03:33,792 - INFO - [bot_engine:52] - Loaded TESTNET credentials for okx.
+2025-09-30 00:03:33,799 - INFO - [exchange_manager:34] - Initialized async client for Bybit.
+2025-09-30 00:03:33,810 - INFO - [exchange_manager:34] - Initialized async client for Binance.
+2025-09-30 00:03:33,817 - INFO - [exchange_manager:34] - Initialized async client for Okx.
+2025-09-30 00:03:34,037 - CRITICAL - [main:70] - An unexpected fatal error occurred: 'ExchangeManager' object has no attribute 'get_all_clients'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\main.py", line 63, in <module>
+    app = App(config, EXCHANGES)
+  File "D:\Dev\py\crypto_arbitrage_bot\gui_application.py", line 51, in __init__
+    self.create_widgets()
+    ~~~~~~~~~~~~~~~~~~~^^
+  File "D:\Dev\py\crypto_arbitrage_bot\gui_application.py", line 83, in create_widgets
+    self.live_ops_tab = LiveOpsTab(tab_view.tab("Live Operations"), self.config, self.bot)
+                        ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Dev\py\crypto_arbitrage_bot\gui_components\live_ops_tab.py", line 29, in __init__
+    self.build_market_scan_panel()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "D:\Dev\py\crypto_arbitrage_bot\gui_components\live_ops_tab.py", line 49, in build_market_scan_panel
+    clients = self.bot.exchange_manager.get_all_clients()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'ExchangeManager' object has no attribute 'get_all_clients'
+2025-09-30 00:04:37,442 - INFO - [main:35] - Simplified logging configured.
+2025-09-30 00:04:37,529 - INFO - [bot_engine:24] - Initializing asynchronous bot engine...
+2025-09-30 00:04:37,530 - INFO - [bot_engine:52] - Loaded TESTNET credentials for bybit.
+2025-09-30 00:04:37,531 - INFO - [bot_engine:52] - Loaded TESTNET credentials for binance.
+2025-09-30 00:04:37,531 - INFO - [bot_engine:52] - Loaded TESTNET credentials for okx.
+2025-09-30 00:04:37,538 - INFO - [exchange_manager:42] - Initialized async client for Bybit.
+2025-09-30 00:04:37,549 - INFO - [exchange_manager:42] - Initialized async client for Binance.
+2025-09-30 00:04:37,555 - INFO - [exchange_manager:42] - Initialized async client for Okx.
+2025-09-30 00:04:41,759 - INFO - [gui_application:134] - --- Starting New Session ---
+2025-09-30 00:04:41,760 - INFO - [gui_application:135] - Mode: DRY RUN (SIMULATION)
+2025-09-30 00:04:41,760 - INFO - [gui_application:138] - Sizing Mode: FIXED @ $20.00
+2025-09-30 00:04:41,760 - INFO - [gui_application:142] - Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT, BNB/USDT, LINK/USDT, DOGE/USDT, SHIB/USDT
+2025-09-30 00:05:11,582 - INFO - [bot_engine:158] - Stop signal received. Engine will shut down after the current cycle.
+2025-09-30 00:05:11,620 - INFO - [gui_application:178] - Bot shutdown complete.
+2025-09-30 00:06:00,781 - INFO - [main:35] - Simplified logging configured.
+2025-09-30 00:06:00,864 - INFO - [bot_engine:25] - Initializing asynchronous bot engine...
+2025-09-30 00:06:00,866 - INFO - [bot_engine:53] - Loaded TESTNET credentials for bybit.
+2025-09-30 00:06:00,866 - INFO - [bot_engine:53] - Loaded TESTNET credentials for binance.
+2025-09-30 00:06:00,866 - INFO - [bot_engine:53] - Loaded TESTNET credentials for okx.
+2025-09-30 00:06:00,873 - INFO - [exchange_manager:42] - Initialized async client for Bybit.
+2025-09-30 00:06:00,883 - INFO - [exchange_manager:42] - Initialized async client for Binance.
+2025-09-30 00:06:00,889 - INFO - [exchange_manager:42] - Initialized async client for Okx.
+2025-09-30 00:06:02,585 - INFO - [gui_application:134] - --- Starting New Session ---
+2025-09-30 00:06:02,585 - INFO - [gui_application:135] - Mode: DRY RUN (SIMULATION)
+2025-09-30 00:06:02,585 - INFO - [gui_application:138] - Sizing Mode: FIXED @ $20.00
+2025-09-30 00:06:02,585 - INFO - [gui_application:142] - Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT, BNB/USDT, LINK/USDT, DOGE/USDT, SHIB/USDT
+2025-09-30 00:07:15,441 - INFO - [main:35] - Simplified logging configured.
+2025-09-30 00:07:15,528 - INFO - [bot_engine:25] - Initializing asynchronous bot engine...
+2025-09-30 00:07:15,529 - INFO - [bot_engine:53] - Loaded TESTNET credentials for bybit.
+2025-09-30 00:07:15,530 - INFO - [bot_engine:53] - Loaded TESTNET credentials for binance.
+2025-09-30 00:07:15,530 - INFO - [bot_engine:53] - Loaded TESTNET credentials for okx.
+2025-09-30 00:07:15,537 - INFO - [exchange_manager:42] - Initialized async client for Bybit.
+2025-09-30 00:07:15,552 - INFO - [exchange_manager:42] - Initialized async client for Binance.
+2025-09-30 00:07:15,563 - INFO - [exchange_manager:42] - Initialized async client for Okx.
+2025-09-30 00:07:17,103 - INFO - [gui_application:134] - --- Starting New Session ---
+2025-09-30 00:07:17,103 - INFO - [gui_application:135] - Mode: DRY RUN (SIMULATION)
+2025-09-30 00:07:17,103 - INFO - [gui_application:138] - Sizing Mode: FIXED @ $20.00
+2025-09-30 00:07:17,103 - INFO - [gui_application:142] - Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT, BNB/USDT, LINK/USDT, DOGE/USDT, SHIB/USDT
+2025-09-30 00:09:46,041 - INFO - [main:35] - Simplified logging configured.
+2025-09-30 00:09:46,125 - INFO - [bot_engine:25] - Initializing asynchronous bot engine...
+2025-09-30 00:09:46,127 - INFO - [bot_engine:53] - Loaded TESTNET credentials for bybit.
+2025-09-30 00:09:46,127 - INFO - [bot_engine:53] - Loaded TESTNET credentials for binance.
+2025-09-30 00:09:46,127 - INFO - [bot_engine:53] - Loaded TESTNET credentials for okx.
+2025-09-30 00:09:46,135 - INFO - [exchange_manager:42] - Initialized async client for Bybit.
+2025-09-30 00:09:46,145 - INFO - [exchange_manager:42] - Initialized async client for Binance.
+2025-09-30 00:09:46,152 - INFO - [exchange_manager:42] - Initialized async client for Okx.
+2025-09-30 00:09:48,680 - INFO - [gui_application:134] - --- Starting New Session ---
+2025-09-30 00:09:48,680 - INFO - [gui_application:135] - Mode: DRY RUN (SIMULATION)
+2025-09-30 00:09:48,680 - INFO - [gui_application:138] - Sizing Mode: FIXED @ $20.00
+2025-09-30 00:09:48,680 - INFO - [gui_application:142] - Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT, BNB/USDT, LINK/USDT, DOGE/USDT, SHIB/USDT
+2025-09-30 00:15:22,383 - INFO - [main:35] - Simplified logging configured.
+2025-09-30 00:15:22,467 - INFO - [bot_engine:25] - Initializing asynchronous bot engine...
+2025-09-30 00:15:22,468 - INFO - [bot_engine:53] - Loaded TESTNET credentials for bybit.
+2025-09-30 00:15:22,469 - INFO - [bot_engine:53] - Loaded TESTNET credentials for binance.
+2025-09-30 00:15:22,469 - INFO - [bot_engine:53] - Loaded TESTNET credentials for okx.
+2025-09-30 00:15:22,476 - INFO - [exchange_manager:42] - Initialized async client for Bybit.
+2025-09-30 00:15:22,487 - INFO - [exchange_manager:42] - Initialized async client for Binance.
+2025-09-30 00:15:22,493 - INFO - [exchange_manager:42] - Initialized async client for Okx.
+2025-09-30 00:15:24,315 - INFO - [gui_application:135] - --- Starting New Session ---
+2025-09-30 00:15:24,315 - INFO - [gui_application:136] - Mode: DRY RUN (SIMULATION)
+2025-09-30 00:15:24,315 - INFO - [gui_application:139] - Sizing Mode: FIXED @ $20.00
+2025-09-30 00:15:24,315 - INFO - [gui_application:143] - Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT, BNB/USDT, LINK/USDT, DOGE/USDT, SHIB/USDT
+2025-09-30 00:15:24,351 - INFO - [bot_engine:95] - Bot engine thread started. Starting asyncio event loop.
+2025-09-30 00:15:26,356 - ERROR - [bot_engine:158] - An error occurred in the main async loop: ExchangeManager.fetch_all_tickers_async() missing 1 required positional argument: 'symbols'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 126, in main_async_loop
+    market_data = await self.exchange_manager.fetch_all_tickers_async()
+                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+TypeError: ExchangeManager.fetch_all_tickers_async() missing 1 required positional argument: 'symbols'
+2025-09-30 00:17:09,308 - INFO - [main:35] - Simplified logging configured.
+2025-09-30 00:17:09,397 - INFO - [bot_engine:25] - Initializing asynchronous bot engine...
+2025-09-30 00:17:09,399 - INFO - [bot_engine:53] - Loaded TESTNET credentials for bybit.
+2025-09-30 00:17:09,399 - INFO - [bot_engine:53] - Loaded TESTNET credentials for binance.
+2025-09-30 00:17:09,400 - INFO - [bot_engine:53] - Loaded TESTNET credentials for okx.
+2025-09-30 00:17:09,409 - INFO - [exchange_manager:42] - Initialized async client for Bybit.
+2025-09-30 00:17:09,420 - INFO - [exchange_manager:42] - Initialized async client for Binance.
+2025-09-30 00:17:09,427 - INFO - [exchange_manager:42] - Initialized async client for Okx.
+2025-09-30 00:17:12,917 - INFO - [gui_application:135] - --- Starting New Session ---
+2025-09-30 00:17:12,918 - INFO - [gui_application:136] - Mode: DRY RUN (SIMULATION)
+2025-09-30 00:17:12,918 - INFO - [gui_application:139] - Sizing Mode: FIXED @ $20.00
+2025-09-30 00:17:12,918 - INFO - [gui_application:143] - Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT, BNB/USDT, LINK/USDT, DOGE/USDT, SHIB/USDT
+2025-09-30 00:17:12,954 - INFO - [bot_engine:95] - Bot engine thread started. Starting asyncio event loop.
+2025-09-30 00:17:12,956 - INFO - [bot_engine:126] - Bot starting main loop. Monitoring symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT', 'ADA/USDT', 'AVAX/USDT', 'BNB/USDT', 'LINK/USDT', 'DOGE/USDT', 'SHIB/USDT']
+2025-09-30 00:17:14,377 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184234195}
+2025-09-30 00:17:14,377 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:17:14,377 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:17:14,378 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:17:14,378 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    await asyncio.sleep(self.config['update_frequency'])
+                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+KeyError: 'update_frequency'
+2025-09-30 00:17:25,174 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184245114}
+2025-09-30 00:17:25,175 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:17:25,176 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:17:25,176 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:17:25,177 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    await asyncio.sleep(self.config['update_frequency'])
+                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+KeyError: 'update_frequency'
+2025-09-30 00:17:35,956 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184255896}
+2025-09-30 00:17:35,956 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:17:35,956 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:17:35,956 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:17:35,957 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    await asyncio.sleep(self.config['update_frequency'])
+                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+KeyError: 'update_frequency'
+2025-09-30 00:17:46,741 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184266682}
+2025-09-30 00:17:46,742 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:17:46,742 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:17:46,742 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:17:46,742 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    await asyncio.sleep(self.config['update_frequency'])
+                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+KeyError: 'update_frequency'
+2025-09-30 00:17:57,530 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184277472}
+2025-09-30 00:17:57,531 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:17:57,531 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:17:57,531 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:17:57,532 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    await asyncio.sleep(self.config['update_frequency'])
+                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+KeyError: 'update_frequency'
+2025-09-30 00:18:08,322 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184288264}
+2025-09-30 00:18:08,323 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:18:08,323 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:18:08,323 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:18:08,323 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    await asyncio.sleep(self.config['update_frequency'])
+                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+KeyError: 'update_frequency'
+2025-09-30 00:18:19,112 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184299054}
+2025-09-30 00:18:19,112 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:18:19,113 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:18:19,113 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:18:19,113 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    await asyncio.sleep(self.config['update_frequency'])
+                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+KeyError: 'update_frequency'
+2025-09-30 00:18:29,904 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184309847}
+2025-09-30 00:18:29,905 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:18:29,905 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:18:29,905 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:18:29,905 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    await asyncio.sleep(self.config['update_frequency'])
+                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+KeyError: 'update_frequency'
+2025-09-30 00:18:40,692 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184320635}
+2025-09-30 00:18:40,692 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:18:40,692 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:18:40,692 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:18:40,693 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    await asyncio.sleep(self.config['update_frequency'])
+                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+KeyError: 'update_frequency'
+2025-09-30 00:18:51,472 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184331415}
+2025-09-30 00:18:51,472 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:18:51,473 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:18:51,473 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:18:51,473 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    await asyncio.sleep(self.config['update_frequency'])
+                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+KeyError: 'update_frequency'
+2025-09-30 00:19:02,264 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184342208}
+2025-09-30 00:19:02,265 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:19:02,265 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:19:02,265 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:19:02,265 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    await asyncio.sleep(self.config['update_frequency'])
+                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+KeyError: 'update_frequency'
+2025-09-30 00:19:13,043 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184352987}
+2025-09-30 00:19:13,044 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:19:13,044 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:19:13,044 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:19:13,045 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    await asyncio.sleep(self.config['update_frequency'])
+                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+KeyError: 'update_frequency'
+2025-09-30 00:19:23,830 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184363770}
+2025-09-30 00:19:23,831 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:19:23,831 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:19:23,831 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:19:23,831 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    await asyncio.sleep(self.config['update_frequency'])
+                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+KeyError: 'update_frequency'
+2025-09-30 00:19:34,620 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184374565}
+2025-09-30 00:19:34,620 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:19:34,621 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:19:34,621 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:19:34,621 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    await asyncio.sleep(self.config['update_frequency'])
+                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+KeyError: 'update_frequency'
+2025-09-30 00:19:45,425 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184385368}
+2025-09-30 00:19:45,425 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:19:45,425 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:19:45,426 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:19:45,426 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    await asyncio.sleep(self.config['update_frequency'])
+                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+KeyError: 'update_frequency'
+2025-09-30 00:19:56,207 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184396152}
+2025-09-30 00:19:56,207 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:19:56,208 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:19:56,208 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:19:56,208 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    await asyncio.sleep(self.config['update_frequency'])
+                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+KeyError: 'update_frequency'
+2025-09-30 00:20:06,990 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184406935}
+2025-09-30 00:20:06,990 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:20:06,990 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:20:06,990 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:20:06,990 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    await asyncio.sleep(self.config['update_frequency'])
+                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+KeyError: 'update_frequency'
+2025-09-30 00:20:17,775 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184417720}
+2025-09-30 00:20:17,775 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:20:17,775 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:20:17,775 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:20:17,776 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    await asyncio.sleep(self.config['update_frequency'])
+                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+KeyError: 'update_frequency'
+2025-09-30 00:20:28,565 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184428511}
+2025-09-30 00:20:28,565 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:20:28,565 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:20:28,566 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:20:28,566 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    self.logger.warning("No market data fetched in this cycle.")
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyError: 'update_frequency'
+2025-09-30 00:20:39,358 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184439305}
+2025-09-30 00:20:39,359 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:20:39,359 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:20:39,359 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:20:39,359 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    if not market_data:
+    
+KeyError: 'update_frequency'
+2025-09-30 00:20:50,157 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184450103}
+2025-09-30 00:20:50,157 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:20:50,157 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:20:50,157 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:20:50,158 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    if not market_data:
+    
+KeyError: 'update_frequency'
+2025-09-30 00:21:00,962 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184460909}
+2025-09-30 00:21:00,962 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:21:00,962 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:21:00,962 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:21:00,963 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    if not market_data:
+    
+KeyError: 'update_frequency'
+2025-09-30 00:21:11,748 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184471695}
+2025-09-30 00:21:11,748 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:21:11,748 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:21:11,748 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:21:11,749 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    if not market_data:
+    
+KeyError: 'update_frequency'
+2025-09-30 00:21:22,534 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184482482}
+2025-09-30 00:21:22,535 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:21:22,535 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:21:22,535 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:21:22,536 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    if not market_data:
+    
+KeyError: 'update_frequency'
+2025-09-30 00:21:33,311 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184493259}
+2025-09-30 00:21:33,312 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:21:33,312 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:21:33,312 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:21:33,312 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    if not market_data:
+    
+KeyError: 'update_frequency'
+2025-09-30 00:21:44,099 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184504047}
+2025-09-30 00:21:44,099 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:21:44,099 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:21:44,100 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:21:44,100 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    if not market_data:
+    
+KeyError: 'update_frequency'
+2025-09-30 00:21:54,891 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184514839}
+2025-09-30 00:21:54,891 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:21:54,891 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:21:54,892 - WARNING - [bot_engine:135] - No market data fetched in this cycle.
+2025-09-30 00:21:54,892 - ERROR - [bot_engine:176] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 136, in main_async_loop
+    if not market_data:
+    
+KeyError: 'update_frequency'
+2025-09-30 00:22:00,018 - INFO - [main:35] - Simplified logging configured.
+2025-09-30 00:22:00,033 - CRITICAL - [main:67] - Fatal Configuration Error: CRITICAL ERROR: Missing required key 'symbols_to_scan' in 'trading_parameters'.
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\main.py", line 41, in <module>
+    config = load_config()
+  File "D:\Dev\py\crypto_arbitrage_bot\utils.py", line 57, in load_config
+    validate_config(config)
+    ~~~~~~~~~~~~~~~^^^^^^^^
+  File "D:\Dev\py\crypto_arbitrage_bot\utils.py", line 48, in validate_config
+    raise ConfigError(f"CRITICAL ERROR: Missing required key '{key}' in 'trading_parameters'.")
+utils.ConfigError: CRITICAL ERROR: Missing required key 'symbols_to_scan' in 'trading_parameters'.
+2025-09-30 00:22:24,321 - INFO - [main:35] - Simplified logging configured.
+2025-09-30 00:22:24,326 - CRITICAL - [main:67] - Fatal Configuration Error: CRITICAL ERROR: Missing required key 'symbols_to_scan' in 'trading_parameters'.
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\main.py", line 41, in <module>
+    config = load_config()
+  File "D:\Dev\py\crypto_arbitrage_bot\utils.py", line 57, in load_config
+    validate_config(config)
+    ~~~~~~~~~~~~~~~^^^^^^^^
+  File "D:\Dev\py\crypto_arbitrage_bot\utils.py", line 48, in validate_config
+    raise ConfigError(f"CRITICAL ERROR: Missing required key '{key}' in 'trading_parameters'.")
+utils.ConfigError: CRITICAL ERROR: Missing required key 'symbols_to_scan' in 'trading_parameters'.
+2025-09-30 00:24:18,263 - INFO - [main:35] - Simplified logging configured.
+2025-09-30 00:24:18,621 - INFO - [bot_engine:25] - Initializing asynchronous bot engine...
+2025-09-30 00:24:18,622 - INFO - [bot_engine:54] - Loaded TESTNET credentials for bybit.
+2025-09-30 00:24:18,622 - INFO - [bot_engine:54] - Loaded TESTNET credentials for binance.
+2025-09-30 00:24:18,622 - INFO - [bot_engine:54] - Loaded TESTNET credentials for okx.
+2025-09-30 00:24:18,629 - INFO - [exchange_manager:42] - Initialized async client for Bybit.
+2025-09-30 00:24:18,640 - INFO - [exchange_manager:42] - Initialized async client for Binance.
+2025-09-30 00:24:18,647 - INFO - [exchange_manager:42] - Initialized async client for Okx.
+2025-09-30 00:24:20,319 - INFO - [gui_application:135] - --- Starting New Session ---
+2025-09-30 00:24:20,319 - INFO - [gui_application:136] - Mode: DRY RUN (SIMULATION)
+2025-09-30 00:24:20,319 - INFO - [gui_application:139] - Sizing Mode: FIXED @ $20.00
+2025-09-30 00:24:20,319 - INFO - [gui_application:143] - Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT, BNB/USDT, LINK/USDT, DOGE/USDT, SHIB/USDT
+2025-09-30 00:24:20,354 - INFO - [bot_engine:97] - Bot engine thread started. Starting asyncio event loop.
+2025-09-30 00:24:20,355 - INFO - [bot_engine:128] - Bot starting main loop. Monitoring symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT', 'ADA/USDT', 'AVAX/USDT', 'BNB/USDT', 'LINK/USDT', 'DOGE/USDT', 'SHIB/USDT']
+2025-09-30 00:24:21,750 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184661615}
+2025-09-30 00:24:21,751 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:24:21,751 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:24:21,751 - WARNING - [bot_engine:137] - No market data fetched in this cycle.
+2025-09-30 00:24:21,751 - ERROR - [bot_engine:178] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 138, in main_async_loop
+    await asyncio.sleep(self.config['update_frequency'])
+                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+KeyError: 'update_frequency'
+2025-09-30 00:24:32,538 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184672491}
+2025-09-30 00:24:32,539 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:24:32,539 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:24:32,539 - WARNING - [bot_engine:137] - No market data fetched in this cycle.
+2025-09-30 00:24:32,539 - ERROR - [bot_engine:178] - An error occurred in the main async loop: 'update_frequency'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 138, in main_async_loop
+    await asyncio.sleep(self.config['update_frequency'])
+                        ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+KeyError: 'update_frequency'
+2025-09-30 00:24:33,696 - INFO - [bot_engine:239] - Stop signal received. Engine will shut down after the current cycle.
+2025-09-30 00:24:33,696 - INFO - [gui_application:170] - Waiting for bot thread to terminate...
+2025-09-30 00:24:42,549 - INFO - [bot_engine:103] - Asyncio event loop finished. Bot engine shutting down.
+2025-09-30 00:24:42,549 - INFO - [exchange_manager:110] - Closing all exchange connections...
+2025-09-30 00:24:42,813 - INFO - [exchange_manager:113] - All exchange connections have been closed.
+2025-09-30 00:24:42,848 - INFO - [gui_application:176] - Bot shutdown complete.
+2025-09-30 00:26:23,234 - INFO - [main:35] - Simplified logging configured.
+2025-09-30 00:26:23,319 - INFO - [bot_engine:25] - Initializing asynchronous bot engine...
+2025-09-30 00:26:23,320 - INFO - [bot_engine:54] - Loaded TESTNET credentials for bybit.
+2025-09-30 00:26:23,321 - INFO - [bot_engine:54] - Loaded TESTNET credentials for binance.
+2025-09-30 00:26:23,321 - INFO - [bot_engine:54] - Loaded TESTNET credentials for okx.
+2025-09-30 00:26:23,328 - INFO - [exchange_manager:42] - Initialized async client for Bybit.
+2025-09-30 00:26:23,339 - INFO - [exchange_manager:42] - Initialized async client for Binance.
+2025-09-30 00:26:23,345 - INFO - [exchange_manager:42] - Initialized async client for Okx.
+2025-09-30 00:26:25,879 - INFO - [gui_application:135] - --- Starting New Session ---
+2025-09-30 00:26:25,880 - INFO - [gui_application:136] - Mode: DRY RUN (SIMULATION)
+2025-09-30 00:26:25,880 - INFO - [gui_application:139] - Sizing Mode: FIXED @ $20.00
+2025-09-30 00:26:25,880 - INFO - [gui_application:143] - Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT, BNB/USDT, LINK/USDT, DOGE/USDT, SHIB/USDT
+2025-09-30 00:26:25,915 - INFO - [bot_engine:97] - Bot engine thread started. Starting asyncio event loop.
+2025-09-30 00:26:25,916 - INFO - [bot_engine:128] - Bot starting main loop. Monitoring symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT', 'ADA/USDT', 'AVAX/USDT', 'BNB/USDT', 'LINK/USDT', 'DOGE/USDT', 'SHIB/USDT']
+2025-09-30 00:26:27,212 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184787117}
+2025-09-30 00:26:27,213 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:26:27,213 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:26:27,213 - WARNING - [bot_engine:137] - No market data fetched in this cycle.
+2025-09-30 00:26:32,590 - INFO - [bot_engine:237] - Stop signal received. Engine will shut down after the current cycle.
+2025-09-30 00:26:32,590 - INFO - [gui_application:170] - Waiting for bot thread to terminate...
+2025-09-30 00:26:33,005 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for bybit: bybit {"retCode":10003,"retMsg":"API key is invalid.","result":{},"retExtInfo":{},"time":1759184792973}
+2025-09-30 00:26:33,006 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for binance: binance {"code":-2008,"msg":"Invalid Api-Key ID."}
+2025-09-30 00:26:33,006 - ERROR - [exchange_manager:65] - Failed to fetch async tickers for okx: okx {"msg":"APIKey does not match current environment.","code":"50101"}
+2025-09-30 00:26:33,006 - WARNING - [bot_engine:137] - No market data fetched in this cycle.
+2025-09-30 00:26:38,022 - INFO - [bot_engine:103] - Asyncio event loop finished. Bot engine shutting down.
+2025-09-30 00:26:38,033 - INFO - [exchange_manager:110] - Closing all exchange connections...
+2025-09-30 00:26:38,300 - INFO - [exchange_manager:113] - All exchange connections have been closed.
+2025-09-30 00:26:38,383 - INFO - [gui_application:176] - Bot shutdown complete.
+2025-09-30 00:40:40,176 - INFO - [main:35] - Simplified logging configured.
+2025-09-30 00:40:40,260 - INFO - [bot_engine:25] - Initializing asynchronous bot engine...
+2025-09-30 00:40:40,268 - INFO - [exchange_manager:37] - Initialized async client for Okx in TESTNET mode.
+2025-09-30 00:40:40,279 - INFO - [exchange_manager:37] - Initialized async client for Binance in TESTNET mode.
+2025-09-30 00:40:40,286 - INFO - [exchange_manager:37] - Initialized async client for Bybit in TESTNET mode.
+2025-09-30 00:40:42,670 - INFO - [gui_application:135] - --- Starting New Session ---
+2025-09-30 00:40:42,670 - INFO - [gui_application:136] - Mode: DRY RUN (SIMULATION)
+2025-09-30 00:40:42,670 - INFO - [gui_application:139] - Sizing Mode: FIXED @ $20.00
+2025-09-30 00:40:42,671 - INFO - [gui_application:143] - Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT, BNB/USDT, LINK/USDT, DOGE/USDT, SHIB/USDT
+2025-09-30 00:40:42,706 - INFO - [bot_engine:119] - Bot engine thread started. Starting asyncio event loop.
+2025-09-30 00:40:42,707 - INFO - [bot_engine:150] - Bot starting main loop. Monitoring symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT', 'ADA/USDT', 'AVAX/USDT', 'BNB/USDT', 'LINK/USDT', 'DOGE/USDT', 'SHIB/USDT']
+2025-09-30 00:40:48,485 - ERROR - [exchange_manager:60] - Failed to fetch async tickers for binance: binance does not have market symbol SHIB/USDT
+2025-09-30 00:40:48,486 - ERROR - [bot_engine:198] - An error occurred in the main async loop: 'PerformanceAnalyzer' object has no attribute 'find_opportunities'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 165, in main_async_loop
+    opportunities = self.analyzer.find_opportunities(market_data)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'PerformanceAnalyzer' object has no attribute 'find_opportunities'
+2025-09-30 00:40:59,738 - ERROR - [exchange_manager:60] - Failed to fetch async tickers for binance: binance does not have market symbol SHIB/USDT
+2025-09-30 00:40:59,739 - ERROR - [bot_engine:198] - An error occurred in the main async loop: 'PerformanceAnalyzer' object has no attribute 'find_opportunities'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 165, in main_async_loop
+    opportunities = self.analyzer.find_opportunities(market_data)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'PerformanceAnalyzer' object has no attribute 'find_opportunities'
+2025-09-30 00:41:10,766 - ERROR - [exchange_manager:60] - Failed to fetch async tickers for binance: binance does not have market symbol SHIB/USDT
+2025-09-30 00:41:10,766 - ERROR - [bot_engine:198] - An error occurred in the main async loop: 'PerformanceAnalyzer' object has no attribute 'find_opportunities'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\bot_engine.py", line 165, in main_async_loop
+    opportunities = self.analyzer.find_opportunities(market_data)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'PerformanceAnalyzer' object has no attribute 'find_opportunities'
