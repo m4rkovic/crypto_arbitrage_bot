@@ -219,6 +219,10 @@ class ArbitrageBot:
         self.logger.info("Stop command received. Shutting down...")
         self.running = False
         
+    def is_running(self) -> bool:
+            """Returns the running state of the bot."""
+            return self.running
+        
 # # bot_engine.py
 
 # import ccxt

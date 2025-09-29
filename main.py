@@ -1,71 +1,73 @@
 # main.py
 
+import yaml
 import os
-import sys
-import logging
-from logging.handlers import RotatingFileHandler
-import customtkinter as ctk
-from tkinter import messagebox
+import logging.config
 from dotenv import load_dotenv
+from tkinter import messagebox
 
-import logging_config # <-- IMPORT THE NEW FILE
-from utils import load_config, ConfigError
 from gui_application import App
+from utils import ConfigError, ExchangeInitError
 
-def setup_simple_logging():
-    """Configures a simple rotating file logger and a console logger."""
-    logging_config.setup_custom_log_levels() # <-- SETUP CUSTOM LEVELS
-    
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
+def load_and_merge_config() -> (dict, dict):
+    """
+    Loads the base config from YAML and injects secrets from the .env file.
+    """
+    with open('config.yaml', 'r') as f:
+        full_config = yaml.safe_load(f)
 
-    if logger.hasHandlers():
-        logger.handlers.clear()
+    bot_config = full_config.get('bot_config', {})
+    exchanges_config = full_config.get('exchanges_config', {})
 
-    log_format = logging.Formatter('%(asctime)s - %(levelname)s - [%(module)s:%(lineno)d] - %(message)s')
-    
-    file_handler = RotatingFileHandler('bot.log', maxBytes=2*1024*1024, backupCount=2, mode='w', encoding='utf-8')
-    file_handler.setFormatter(log_format)
-    logger.addHandler(file_handler)
-    
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(log_format)
-    logger.addHandler(console_handler)
-    
-    logging.info("Simplified logging configured.")
+    load_dotenv()
+
+    for ex_name in exchanges_config.keys():
+        upper_ex_name = ex_name.upper()
+        
+        # --- THIS IS THE UPDATED LOGIC ---
+        # It now checks for both _TESTNET_ and regular names.
+
+        # Try to get the testnet key first, if not found, try the mainnet key name.
+        api_key = os.getenv(f"{upper_ex_name}_TESTNET_API_KEY") or os.getenv(f"{upper_ex_name}_API_KEY")
+        
+        # In your screenshot, the secret key is named _TESTNET_SECRET
+        secret_key = os.getenv(f"{upper_ex_name}_TESTNET_SECRET") or os.getenv(f"{upper_ex_name}_SECRET_KEY")
+        
+        # In your screenshot, the passphrase is named _TESTNET_PASSPHRASE
+        password = os.getenv(f"{upper_ex_name}_TESTNET_PASSPHRASE") or os.getenv(f"{upper_ex_name}_PASSWORD")
+
+        if api_key:
+            exchanges_config[ex_name]['api_key'] = api_key
+        if secret_key:
+            exchanges_config[ex_name]['secret_key'] = secret_key
+        if password:
+            exchanges_config[ex_name]['password'] = password
+            
+    return bot_config, exchanges_config
+
+def setup_logging(config: dict):
+    """Sets up logging based on the provided configuration."""
+    logging_config = config.get('logging')
+    if logging_config:
+        try:
+            logging.config.dictConfig(logging_config)
+            logging.info("Logging configured successfully.")
+        except Exception as e:
+            messagebox.showwarning("Logging Error", f"Could not configure logging: {e}")
+            logging.basicConfig(level=logging.INFO) # Fallback to basic config
+    else:
+        logging.basicConfig(level=logging.INFO)
 
 if __name__ == "__main__":
-    load_dotenv()
     try:
-        setup_simple_logging()
-        config = load_config()
+        config, exchanges_config = load_and_merge_config()
+        setup_logging(config)
         
-        EXCHANGES = {
-            'okx': {
-                "apiKey": os.getenv("OKX_TESTNET_API_KEY"), 
-                "secret": os.getenv("OKX_TESTNET_SECRET"), 
-                "password": os.getenv("OKX_TESTNET_PASSPHRASE")
-            },
-            'binance': {
-                "apiKey": os.getenv("BINANCE_TESTNET_API_KEY"), 
-                "secret": os.getenv("BINANCE_TESTNET_SECRET")
-            },
-            'bybit':{
-                "apiKey": os.getenv("BYBIT_TESTNET_API_KEY"), 
-                "secret": os.getenv("BYBIT_TESTNET_SECRET")
-            }
-        }
-
-        all_keys_present = all(val for ex_config in EXCHANGES.values() for val in ex_config.values())
-        if not all_keys_present:
-            raise ConfigError("CRITICAL: One or more API keys are missing from your .env file for an active exchange.")
-        
-        app = App(config, EXCHANGES)
+        app = App(config=config, exchanges_config=exchanges_config)
         app.mainloop()
 
-    except ConfigError as e:
-        logging.critical(f"Fatal Configuration Error: {e}", exc_info=True)
-        messagebox.showerror("Fatal Configuration Error", str(e))
+    except FileNotFoundError:
+        messagebox.showerror("Config Error", "config.yaml not found. Please ensure the file exists.")
     except Exception as e:
-        logging.critical(f"An unexpected fatal error occurred: {e}", exc_info=True)
-        messagebox.showerror("Unexpected Fatal Error", f"An unrecoverable error occurred:\n\n{e}\n\nCheck bot.log for details.")
+        messagebox.showerror("Fatal Error", f"An unexpected error occurred: {e}")
+        logging.critical(f"A fatal error occurred on startup: {e}", exc_info=True)

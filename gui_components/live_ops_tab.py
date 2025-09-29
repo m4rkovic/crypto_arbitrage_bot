@@ -1,27 +1,17 @@
-#live_ops_tab.py
+# live_ops_tab.py
 
 import customtkinter as ctk
+from tkinter import ttk  # <-- ADDED for Treeview
 from typing import Any, Dict, Optional
 import time
-
-from bot_engine import ArbitrageBot
 
 class LiveOpsTab(ctk.CTkFrame):
     """
     The "Live Operations" tab.
     Contains the live market scan, recent opportunity history, and the main log output.
     """
-    def __init__(self, master, config: Dict[str, Any], bot: Optional[ArbitrageBot]):
+    def __init__(self, master):
         super().__init__(master, fg_color="transparent")
-        self.config = config
-        self.bot = bot
-        self.market_data_labels: Dict[str, Dict[str, ctk.CTkLabel]] = {}
-        
-        # --- NEW: Store the last price to detect changes ---
-        self.last_prices: Dict[str, Any] = {}
-        self.default_text_color = ctk.ThemeManager.theme["CTkLabel"]["text_color"]
-        self.price_up_color = "#33FF99"   # A brighter green
-        self.price_down_color = "#FF6666" # A softer red
 
         self.grid_rowconfigure(2, weight=1)
         self.grid_columnconfigure(0, weight=1)
@@ -35,46 +25,42 @@ class LiveOpsTab(ctk.CTkFrame):
         self.pack(expand=True, fill="both")
 
     def build_market_scan_panel(self):
-        """Creates the live market data grid."""
-        scan_outer_frame = ctk.CTkFrame(self)
-        scan_outer_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
-        scan_outer_frame.grid_columnconfigure(0, weight=1)
-        ctk.CTkLabel(scan_outer_frame, text="Live Market Scan", font=ctk.CTkFont(weight="bold")).pack()
-        
-        scan_frame = ctk.CTkScrollableFrame(scan_outer_frame, height=200)
-        scan_frame.pack(fill="x", expand=True, padx=5, pady=5)
-        
-        if not self.bot: return
+        """Creates the live market data panel using a ttk.Treeview."""
+        market_data_frame = ctk.CTkFrame(self)
+        market_data_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
+        market_data_frame.grid_columnconfigure(0, weight=1)
+        market_data_frame.grid_rowconfigure(1, weight=1)
 
-        clients = self.bot.exchange_manager.get_all_clients()
-        headers = ["Symbol"] + [f"{name.capitalize()} {val}" for name in clients for val in ["Bid", "Ask"]] + ["Spread %"]
-        scan_frame.grid_columnconfigure(list(range(len(headers))), weight=1)
+        ctk.CTkLabel(market_data_frame, text="Live Market Data", font=ctk.CTkFont(size=14, weight="bold")).grid(row=0, column=0, pady=5)
         
-        for i, header in enumerate(headers):
-            ctk.CTkLabel(scan_frame, text=header, font=ctk.CTkFont(weight="bold")).grid(row=0, column=i, padx=5)
-        
-        for i, symbol in enumerate(self.config['trading_parameters']['symbols_to_scan']):
-            row_index = i + 1
-            self.market_data_labels[symbol] = {}
-            self.last_prices[symbol] = {} # Initialize storage for this symbol
-            
-            symbol_label = ctk.CTkLabel(scan_frame, text=symbol, fg_color="transparent")
-            symbol_label.grid(row=row_index, column=0, padx=5, pady=2, sticky="ew")
-            self.market_data_labels[symbol]['symbol'] = symbol_label
-            
-            col_idx = 1
-            for ex_name in clients:
-                for val in ["bid", "ask"]:
-                    label_key = f"{ex_name}_{val}"
-                    label = ctk.CTkLabel(scan_frame, text="-", fg_color="transparent")
-                    label.grid(row=row_index, column=col_idx, padx=5, pady=2, sticky="ew")
-                    self.market_data_labels[symbol][label_key] = label
-                    self.last_prices[symbol][label_key] = None # Initialize last price
-                    col_idx += 1
+        # --- Treeview Setup ---
+        style = ttk.Style()
+        style.theme_use("default")
+        style.configure("Treeview", background="#2b2b2b", foreground="white", fieldbackground="#2b2b2b", borderwidth=0, rowheight=25)
+        style.map('Treeview', background=[('selected', '#1f6aa5')])
+        style.configure("Treeview.Heading", background="#565b5e", foreground="white", font=('Arial', 10, 'bold'), padding=5)
 
-            spread_label = ctk.CTkLabel(scan_frame, text="-", fg_color="transparent")
-            spread_label.grid(row=row_index, column=col_idx, padx=5, pady=2, sticky="ew")
-            self.market_data_labels[symbol]['spread'] = spread_label
+        self.market_data_table = ttk.Treeview(
+            market_data_frame,
+            columns=("Symbol", "Bid", "Ask", "Spread"),
+            show="headings"
+        )
+        
+        self.market_data_table.heading("Symbol", text="Symbol")
+        self.market_data_table.heading("Bid", text="Best Bid")
+        self.market_data_table.heading("Ask", text="Best Ask")
+        self.market_data_table.heading("Spread", text="Spread (%)")
+
+        self.market_data_table.column("Symbol", width=120, anchor="w")
+        self.market_data_table.column("Bid", width=120, anchor="e")
+        self.market_data_table.column("Ask", width=120, anchor="e")
+        self.market_data_table.column("Spread", width=100, anchor="e")
+
+        self.market_data_table.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
+        
+        # Configure tags for highlighting
+        self.market_data_table.tag_configure('profitable', background='#1E4D2B')
+        self.market_data_table.tag_configure('normal', background='#2b2b2b')
 
     def build_opportunity_history_panel(self):
         """Creates the textbox for recent profitable opportunities."""
@@ -112,64 +98,28 @@ class LiveOpsTab(ctk.CTkFrame):
         self.opp_history_textbox.configure(state="disabled")
 
     def update_market_data_display(self, data: Dict[str, Any]):
-        """Updates a single row in the market scan grid with new data, including price change indicators."""
-        if not self.bot: return
-        try:
-            symbol = data.get('symbol')
-            if symbol in self.market_data_labels:
-                labels = self.market_data_labels[symbol]
-                last_symbol_prices = self.last_prices.get(symbol, {})
-                clients = self.bot.exchange_manager.get_all_clients()
-                
-                # --- UPDATE BID/ASK PRICES WITH INDICATORS ---
-                for ex_name in clients:
-                    for price_type in ["bid", "ask"]:
-                        label_key = f"{ex_name}_{price_type}"
-                        label_widget = labels.get(label_key)
-                        new_price = data.get(label_key)
+        """Updates the Treeview with a new snapshot of all market data."""
+        # Clear existing data from the table
+        for i in self.market_data_table.get_children():
+            self.market_data_table.delete(i)
+            
+        # Insert new data, sorted by symbol
+        for symbol, prices in sorted(data.items()):
+            best_bid = prices.get('best_bid', 0.0)
+            best_ask = prices.get('best_ask', 0.0)
+            is_profitable = prices.get('is_profitable', False)
+            
+            if best_bid and best_ask and best_ask > 0:
+                spread = ((best_ask - best_bid) / best_ask) * 100
+                spread_str = f"{spread:.4f}%"
+            else:
+                spread_str = "N/A"
 
-                        if label_widget and new_price is not None:
-                            old_price = last_symbol_prices.get(label_key)
-                            
-                            text_color = self.default_text_color
-                            indicator = ""
-                            
-                            if old_price is not None:
-                                if new_price > old_price:
-                                    text_color = self.price_up_color
-                                    indicator = " ▲"
-                                elif new_price < old_price:
-                                    text_color = self.price_down_color
-                                    indicator = " ▼"
-                            
-                            label_widget.configure(text=f"{new_price:.4f}{indicator}", text_color=text_color)
-                            self.last_prices[symbol][label_key] = new_price # Update stored price
-                        elif label_widget:
-                            label_widget.configure(text="-", text_color=self.default_text_color)
+            row_tag = 'profitable' if is_profitable else 'normal'
 
-
-                # --- UPDATE SPREAD ---
-                spread_pct = data.get('spread_pct')
-                is_profitable = data.get('is_profitable', False)
-                spread_label = labels['spread']
-                
-                if spread_pct is not None:
-                    spread_color = "green" if spread_pct > 0 else "red"
-                    spread_label.configure(text=f"{spread_pct:.3f}%", text_color=spread_color)
-                else:
-                    spread_label.configure(text="-", text_color=self.default_text_color)
-
-                # --- UPDATE ROW HIGHLIGHT ---
-                highlight_color = "#1E4D2B" if is_profitable else "transparent" 
-                for label_widget in labels.values():
-                   label_widget.configure(fg_color=highlight_color)
-
-        except Exception as e:
-            # Using master's logger to log the error. The widget hierarchy is master.master.master
-            # LiveOpsTab -> CTkFrame(tab) -> CTkTabview -> CTkFrame(right_frame) -> App
-            # This is a bit fragile; a more robust solution might involve passing the logger down.
-            try:
-                self.master.master.master.master.logger.warning(f"Failed to update GUI market data. Error: {e}", exc_info=False)
-            except AttributeError: # Fallback if widget hierarchy changes
-                print(f"GUI ERROR: Failed to log market data update error: {e}")
-
+            self.market_data_table.insert(
+                "", 
+                "end", 
+                values=(symbol, f"{best_bid:.8f}", f"{best_ask:.8f}", spread_str),
+                tags=(row_tag,)
+            )

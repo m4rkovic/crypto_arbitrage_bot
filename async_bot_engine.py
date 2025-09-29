@@ -101,6 +101,14 @@ class AsyncArbitrageBot:
             return True
         
         return False
+    
+    def is_running(self) -> bool:
+        """Returns the running state of the bot."""
+        # This should simply return the state variable defined in __init__
+        return self.is_running
+    #     """Returns the running state of the bot."""
+    #     with self._lock:
+    #         return self._is_running
 
     async def _scan_for_opportunities(self) -> List[Dict[str, Any]]:
         """

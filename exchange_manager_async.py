@@ -24,7 +24,7 @@ class AsyncExchangeManager:
                 
                 params = {
                     'apiKey': ex_config['api_key'],
-                    'secret': ex_config['api_secret'],
+                    'secret': ex_config['secret_key'],
                     'options': { 'defaultType': 'spot' },
                 }
                 # Special handling for OKX testnet which requires a password
