@@ -10,20 +10,54 @@ class LiveOpsTab(ctk.CTkFrame):
     The "Live Operations" tab.
     Contains the live market scan, recent opportunity history, and the main log output.
     """
-    def __init__(self, master):
-        super().__init__(master, fg_color="transparent")
+    def __init__(self, master, **kwargs):
+            super().__init__(master, **kwargs)
 
-        self.grid_rowconfigure(2, weight=1)
-        self.grid_columnconfigure(0, weight=1)
-        
-        self.build_market_scan_panel()
-        self.build_opportunity_history_panel()
-        
-        self.log_textbox = ctk.CTkTextbox(self, state="disabled", font=("Courier New", 12))
-        self.log_textbox.grid(row=2, column=0, sticky="nsew", padx=10, pady=10)
-        self.setup_log_colors()
-        self.pack(expand=True, fill="both")
+            self.configure(corner_radius=0, fg_color="transparent")
+            self.grid_columnconfigure(0, weight=1)
+            self.grid_rowconfigure(0, weight=1)
 
+            # === Treeview for Market Data ===
+            style = ttk.Style()
+            style.theme_use("default")
+            
+            # Configure Treeview colors for dark mode
+            style.configure("Treeview",
+                            background="#2a2d2e",
+                            foreground="white",
+                            rowheight=25,
+                            fieldbackground="#343638",
+                            bordercolor="#343638",
+                            borderwidth=0)
+            style.map('Treeview', background=[('selected', '#22559b')])
+            style.configure("Treeview.Heading",
+                            background="#565b5e",
+                            foreground="white",
+                            relief="flat")
+            style.map("Treeview.Heading",
+                    background=[('active', '#3484F0')])
+
+            columns = ("symbol", "exchange1", "price1", "exchange2", "price2", "spread")
+            self.market_table = ttk.Treeview(self, columns=columns, show="headings")
+            
+            # Define headings
+            self.market_table.heading("symbol", text="Symbol")
+            self.market_table.heading("exchange1", text="Buy Exchange")
+            self.market_table.heading("price1", text="Buy Price")
+            self.market_table.heading("exchange2", text="Sell Exchange")
+            self.market_table.heading("price2", text="Sell Price")
+            self.market_table.heading("spread", text="Spread (%)")
+
+            # Configure column widths
+            for col in columns:
+                self.market_table.column(col, anchor="center", width=120)
+
+            self.market_table.grid(row=0, column=0, sticky='nsew', padx=20, pady=20)
+            
+            # Configure tags for coloring rows
+            self.market_table.tag_configure('positive_spread', background='#1f4021')
+            self.market_table.tag_configure('negative_spread', background='#402121')
+            
     def build_market_scan_panel(self):
         """Creates the live market data panel using a ttk.Treeview."""
         market_data_frame = ctk.CTkFrame(self)

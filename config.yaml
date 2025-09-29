@@ -1,56 +1,95 @@
 # config.yaml
 
-trading_parameters:
-  # List of symbols the bot will scan for opportunities.
-  symbols_to_scan:
-    # --- Majors ---
-    - BTC/USDT      # Bitcoin: The largest and most liquid crypto asset.
-    - ETH/USDT      # Ethereum: The leading smart contract platform.
+bot_config:
+  # This section contains all parameters related to the bot's behavior.
+  trading_parameters:
+    # List of symbols the bot will scan for opportunities.
+    symbols_to_scan:
+      # --- Majors ---
+      - BTC/USDT      # Bitcoin: The largest and most liquid crypto asset.
+      - ETH/USDT      # Ethereum: The leading smart contract platform.
 
-    # --- Established Layer 1s ---
-    - SOL/USDT      # Solana: A high-speed competitor to Ethereum.
-    - XRP/USDT      # XRP: Known for its focus on cross-border payments.
-    - ADA/USDT      # Cardano: A smart contract platform with a large community.
-    - AVAX/USDT     # Avalanche: A fast L1 popular for DeFi and gaming.
-    - BNB/USDT      # Binance Coin: The native token of the Binance ecosystem.
+      # --- Established Layer 1s ---
+      - SOL/USDT      # Solana: A high-speed competitor to Ethereum.
+      - XRP/USDT      # XRP: Known for its focus on cross-border payments.
+      - ADA/USDT      # Cardano: A smart contract platform with a large community.
+      - AVAX/USDT     # Avalanche: A fast L1 popular for DeFi and gaming.
+      - BNB/USDT      # Binance Coin: The native token of the Binance ecosystem.
 
-    # --- DeFi Infrastructure ---
-    - LINK/USDT     # Chainlink: The leading oracle network for DeFi.
+      # --- DeFi Infrastructure ---
+      - LINK/USDT     # Chainlink: The leading oracle network for DeFi.
 
-    # --- Meme Coins (High Volatility) ---
-    - DOGE/USDT     # Dogecoin: The original high-volume meme coin.
-    - SHIB/USDT     # Shiba Inu: Another major meme coin with high volatility.
+      # --- Meme Coins (High Volatility) ---
+      - DOGE/USDT     # Dogecoin: The original high-volume meme coin.
+      - SHIB/USDT     # Shiba Inu: Another major meme coin with high volatility.
 
-  # --- SIZING PARAMETERS ---
-  sizing_mode: 'fixed'  # Can be 'fixed' or 'dynamic'
+    # --- SIZING PARAMETERS ---
+    sizing_mode: 'fixed'  # Can be 'fixed' or 'dynamic'
+    
+    # -- Fixed Sizing --
+    trade_size_usdt: 20.0
+    
+    # -- Dynamic Sizing --
+    dynamic_size_percentage: 5.0   # 5% of available quote balance
+    dynamic_size_max_usdt: 100.0   # Capped at a max of 100 USDT
+
+    # --- PROFITABILITY & FEES ---
+    min_profit_usd: 0.05
+    fee_percent: 0.1
+    dry_run: true
+    
+    # --- TIMING ---
+    scan_interval_s: 3.0
+    order_monitor_timeout_s: 45
+    post_trade_delay_s: 10
+
+  rebalancing:
+    enabled: true
+    rebalance_interval_s: 3600 # Check every hour
+    asset_inventory_targets_percent:
+      USDT: 40
+      BTC: 15
+      ETH: 15
+    default_max_inventory_percent: 8 # Max for any other asset (SOL, XRP, etc.)
+    rebalance_threshold_percent: 5 # Trigger rebalance if an asset is 5% over its target
+
+  # Placeholder for logging configuration
+  logging:
+    version: 1
+    disable_existing_loggers: false
+    formatters:
+      simple:
+        format: '%(asctime)s - %(levelname)s - %(message)s'
+    handlers:
+      console:
+        class: logging.StreamHandler
+        formatter: simple
+        stream: ext://sys.stdout
+      file:
+        class: logging.FileHandler
+        formatter: simple
+        filename: bot.log
+    root:
+      level: INFO
+      handlers: [console, file]
+
+
+# This section must exist for the program to load exchange names.
+# The API keys inside can be left blank as they are loaded from your .env file.
+exchanges_config:
+  okx:
+    api_key: "b8fe68d8-bc6d-4649-83ca-2435dbadd379"
+    secret_key: "20DB4765298844D345F79F9F75951DA8"
+    password: "Barkleys@123"
   
-  # -- Fixed Sizing --
-  trade_size_usdt: 20.0
+  binance:
+    api_key: "yk7qBHeUkPsS5c7yXrWZagTaq8SCqkJ2wzBYQi8Ir8zIXYXJAnOWxpzp7mkc7N3s"
+    secret_key: "BXxIjndQgYbhgOWwMyLovBqSSFw1SlynP3K07cajBI6XSeKoVyszIKUjzlNJNq93"
   
-  # -- Dynamic Sizing --
-  dynamic_size_percentage: 5.0   # 5% of available quote balance
-  dynamic_size_max_usdt: 100.0   # Capped at a max of 100 USDT
+  bybit:
+    api_key: "kAfq3Ng5F3DeRCsN6p"
+    secret_key: "vlOVXLqxiepnFjofkbQSU34JK3jUrep0lkuf"
 
-  # --- PROFITABILITY & FEES ---
-  min_profit_usd: 0.05
-  fee_percent: 0.1
-  dry_run: true
-  
-  # --- TIMING ---
-  scan_interval_s: 3.0
-  order_monitor_timeout_s: 45
-  post_trade_delay_s: 10
-
-rebalancing:
-  enabled: true
-  rebalance_interval_s: 3600 # Check every hour
-  asset_inventory_targets_percent:
-    USDT: 40
-    BTC: 15
-    ETH: 15
-  default_max_inventory_percent: 8 # Max for any other asset (SOL, XRP, etc.)
-  rebalance_threshold_percent: 5 # Trigger rebalance if an asset is 5% over its target
-  
 # # config.yaml
 
 # trading_parameters:
@@ -74,15 +113,8 @@ rebalancing:
 #     - DOGE/USDT     # Dogecoin: The original high-volume meme coin.
 #     - SHIB/USDT     # Shiba Inu: Another major meme coin with high volatility.
 
-#   # symbols_to_scan:
-#   #   - BTC/USDT
-#   #   - ETH/USDT
-#   #   - SOL/USDT
-#   #   - XRP/USDT
-#   #   - DOGE/USDT
-  
-#     # --- SIZING PARAMETERS ---
-#   sizing_mode: 'fixed'  # 'fixed' or 'dynamic'
+#   # --- SIZING PARAMETERS ---
+#   sizing_mode: 'fixed'  # Can be 'fixed' or 'dynamic'
   
 #   # -- Fixed Sizing --
 #   trade_size_usdt: 20.0
@@ -101,74 +133,15 @@ rebalancing:
 #   order_monitor_timeout_s: 45
 #   post_trade_delay_s: 10
 
-#   # The fixed amount in USDT for each leg of the arbitrage trade.
-#   trade_size_usdt: 60.0
-  
-#   # The minimum estimated net profit in USD required to trigger a trade.
-#   min_profit_usd: 0.05
-  
-#   # Default fee percentage used if the actual fee cannot be fetched from the exchange.
-#   fee_percent: 0.1
-  
-#   # If true, the bot will log trades but not send them to the exchange.
-#   dry_run: true
-  
-#   # The time in seconds to wait between scanning all symbols.
-#   scan_interval_s: 3.0
-  
-#   # The maximum time in seconds to wait for both orders to fill before giving up.
-#   order_monitor_timeout_s: 45
-  
-#   # A brief pause after a trade is completed to avoid issues.
-#   post_trade_delay_s: 10
-  
-  
-# trading_parameters:
-#   symbols_to_scan:
-#     - BTC/USDT
-#     - ETH/USDT
-#     - SOL/USDT
-#     - XRP/USDT
-#     - DOGE/USDT
-
-#   trade_size_usdt: 50.0
-#   min_profit_usd: 0.05
-#   min_required_spread_percent: 0.5
-#   fee_percent: 0.1
-#   dry_run: false
-
-# risk_management:
-#   balance_kill_switch_usd: 50
-#   max_capital_deployment_percentage: 25   # max % of total portfolio used
-#   balance_percentage_per_trade: 2         # % of available balance per trade
-#   max_trade_size_usdt: 20                 # cap per trade in USDT
-
 # rebalancing:
 #   enabled: true
-#   default_max_inventory_percent: 10       # max % of portfolio per asset
-#   rebalance_threshold_percent: 5          # trigger if >5% deviation
-#   asset_inventory_targets_percent:
-#     BTC: 15
-#     ETH: 20
-# # risk_management:
-# #   order_monitor_timeout_s: 30
-# #   scan_interval_s: 2.0
-# #   neutralization_slippage_percent: 1.0
-# #   balance_kill_switch_usd: 0
-# #   critical_error_backoff_initial_s: 5
-# #   critical_error_backoff_max_s: 60
-# #   live_balance_refresh_s: 60
-
-# rebalancing:
-#   enabled: true
-#   rebalance_interval_s: 3600
+#   rebalance_interval_s: 3600 # Check every hour
 #   asset_inventory_targets_percent:
 #     USDT: 40
 #     BTC: 15
 #     ETH: 15
-#   default_max_inventory_percent: 8
-#   rebalance_threshold_percent: 5
+#   default_max_inventory_percent: 8 # Max for any other asset (SOL, XRP, etc.)
+#   rebalance_threshold_percent: 5 # Trigger rebalance if an asset is 5% over its target
+  
 
-# stop_conditions:
-#   max_trades: 0
-#   run_duration_s: 0
+  

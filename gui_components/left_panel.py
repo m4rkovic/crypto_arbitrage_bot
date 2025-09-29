@@ -4,19 +4,51 @@ import customtkinter as ctk
 from typing import Any, Dict, Callable
 
 class LeftPanel(ctk.CTkFrame):
-    def __init__(self, master, config: Dict[str, Any], start_callback: Callable, stop_callback: Callable):
-        super().__init__(master, width=350, corner_radius=0)
-        self.config = config
-        self.start_callback = start_callback
-        self.stop_callback = stop_callback
+    def __init__(self, master, start_callback, stop_callback, **kwargs):
+            super().__init__(master, **kwargs)
 
-        # This is critical. It forces the panel to be exactly 350px wide.
-        self.grid_propagate(False)
-        # This configures the grid *inside* this panel, allowing the stats tab to expand.
-        self.grid_rowconfigure(4, weight=1)
-        
-        self.symbol_checkboxes: Dict[str, ctk.CTkCheckBox] = {}
-        self.create_widgets()
+            self.start_callback = start_callback
+            self.stop_callback = stop_callback
+
+            self.configure(width=200, corner_radius=0)
+            self.grid(row=0, column=0, sticky="nsew")
+            
+            # Configure grid layout: row 6 will expand and push widgets up/down
+            self.grid_rowconfigure(6, weight=1)
+
+            # === Widgets ===
+            self.title_label = ctk.CTkLabel(self, text="Arbitrage Bot", font=ctk.CTkFont(size=20, weight="bold"))
+            self.title_label.grid(row=0, column=0, padx=20, pady=(20, 10))
+
+            self.engine_switch_var = ctk.StringVar(value="Async")
+            self.engine_switch = ctk.CTkSwitch(self, text="Async / Sync Engine", variable=self.engine_switch_var, onvalue="Async", offvalue="Sync")
+            self.engine_switch.grid(row=1, column=0, padx=20, pady=10, sticky="w")
+
+            self.start_button = ctk.CTkButton(self, text="Start Bot", command=self.start_callback)
+            self.start_button.grid(row=2, column=0, padx=20, pady=10)
+
+            self.stop_button = ctk.CTkButton(self, text="Stop Bot", command=self.stop_callback, state="disabled")
+            self.stop_button.grid(row=3, column=0, padx=20, pady=10)
+
+            self.status_label = ctk.CTkLabel(self, text="Status: Idle", text_color="gray")
+            self.status_label.grid(row=4, column=0, padx=20, pady=(20, 10))
+
+            # --- Appearance mode widgets at the bottom ---
+            self.appearance_mode_label = ctk.CTkLabel(self, text="Appearance Mode:", anchor="w")
+            self.appearance_mode_label.grid(row=7, column=0, padx=20, pady=(10, 0))
+            
+            self.appearance_mode_menu = ctk.CTkOptionMenu(self, values=["Light", "Dark", "System"], command=self.change_appearance_mode_event)
+            self.appearance_mode_menu.grid(row=8, column=0, padx=20, pady=(0, 20))
+            self.appearance_mode_menu.set("Dark")
+
+    def get_selected_engine(self):
+            """Returns the currently selected engine type ('Async' or 'Sync')."""
+            return self.engine_switch_var.get()
+
+    def change_appearance_mode_event(self, new_appearance_mode: str):
+        """Changes the theme of the application."""
+        ctk.set_appearance_mode(new_appearance_mode)
+
 
     def create_widgets(self):
         # We now place the engine selector first in the internal layout of this frame

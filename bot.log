@@ -6689,3 +6689,4 @@ Traceback (most recent call last):
     rebalancer = Rebalancer(exchange_manager, self.config, trade_logger)
 TypeError: Rebalancer.__init__() takes 3 positional arguments but 4 were given
 2025-09-29 17:07:06,977 - INFO - Logging configured successfully.
+2025-09-29 19:21:27,551 - INFO - Logging configured successfully.
