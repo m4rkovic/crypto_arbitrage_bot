@@ -342,3 +342,194 @@ TypeError: ArbitrageBot.__init__() got an unexpected keyword argument 'config'
 2025-10-20 21:37:47,951 - INFO - [exchange_manager:106] -   ...Success for BYBIT.
 2025-10-20 21:37:48,065 - INFO - [gui_application:96] - [ENGINE STATUS] stopped
 2025-10-20 21:37:48,078 - INFO - [gui_application:96] - [ENGINE STATUS] engine_stopped
+2025-10-20 21:43:10,524 - INFO - [logging_config:98] - Logging initialized -> human log: D:\Dev\py\crypto_arbitrage_bot\logs\bot.log | json log: D:\Dev\py\crypto_arbitrage_bot\logs\bot_structured.log
+2025-10-20 21:43:12,587 - INFO - [exchange_manager:31] - Initialized Okx client.
+2025-10-20 21:43:14,775 - INFO - [exchange_manager:31] - Initialized Binance client.
+2025-10-20 21:43:21,129 - INFO - [exchange_manager:31] - Initialized Bybit client.
+2025-10-20 21:43:21,129 - INFO - [bot_engine:90] - SyncArbitrageEngine initialized (poll=0.75s)
+2025-10-20 21:43:26,625 - INFO - [gui_application:149] - --- Starting New Session ---
+2025-10-20 21:43:26,625 - INFO - [gui_application:150] - Mode: LIVE TRADING
+2025-10-20 21:43:26,625 - INFO - [gui_application:152] - Sizing Mode: FIXED @ $600.00
+2025-10-20 21:43:26,626 - INFO - [gui_application:157] - Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT, BNB/USDT, LINK/USDT, DOGE/USDT, SHIB/USDT
+2025-10-20 21:43:28,978 - INFO - [gui_application:73] - [ENGINE STATUS] warming_up
+2025-10-20 21:43:28,978 - INFO - [gui_application:73] - [ENGINE STATUS] engine_started
+2025-10-20 21:43:36,769 - WARNING - [exchange_manager:104] - Received empty or invalid order book from bybit for SOL/USDT.
+2025-10-20 21:43:38,313 - WARNING - [exchange_manager:104] - Received empty or invalid order book from bybit for ADA/USDT.
+2025-10-20 21:43:39,472 - WARNING - [exchange_manager:104] - Received empty or invalid order book from bybit for AVAX/USDT.
+2025-10-20 21:43:42,938 - WARNING - [exchange_manager:104] - Received empty or invalid order book from binance for SHIB/USDT.
+2025-10-20 21:43:43,455 - WARNING - [exchange_manager:95] - Insufficient liquidity to meet trade size of $600.00.
+2025-10-20 21:43:51,263 - WARNING - [exchange_manager:104] - Received empty or invalid order book from bybit for SOL/USDT.
+2025-10-20 21:43:53,234 - WARNING - [exchange_manager:104] - Received empty or invalid order book from bybit for ADA/USDT.
+2025-10-20 21:43:53,962 - WARNING - [exchange_manager:104] - Received empty or invalid order book from bybit for AVAX/USDT.
+2025-10-20 21:43:57,571 - WARNING - [exchange_manager:104] - Received empty or invalid order book from binance for SHIB/USDT.
+2025-10-20 21:43:57,761 - WARNING - [exchange_manager:95] - Insufficient liquidity to meet trade size of $600.00.
+2025-10-20 21:43:57,771 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 21:43:58,521 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 21:44:06,653 - WARNING - [exchange_manager:104] - Received empty or invalid order book from bybit for SOL/USDT.
+2025-10-20 21:44:08,108 - WARNING - [exchange_manager:104] - Received empty or invalid order book from bybit for ADA/USDT.
+2025-10-20 21:44:08,827 - WARNING - [exchange_manager:104] - Received empty or invalid order book from bybit for AVAX/USDT.
+2025-10-20 21:44:11,622 - WARNING - [exchange_manager:104] - Received empty or invalid order book from binance for SHIB/USDT.
+2025-10-20 21:44:12,137 - WARNING - [exchange_manager:95] - Insufficient liquidity to meet trade size of $600.00.
+2025-10-20 21:44:12,152 - INFO - [gui_application:73] - [ENGINE STATUS] engine_stopping
+2025-10-20 21:44:12,153 - INFO - [trade_executor:230] - [Trade] received stop signal
+2025-10-20 21:44:17,162 - WARNING - [bot_engine:145] - Engine loop did not stop within 5.0s
+2025-10-20 21:44:17,163 - INFO - [bot_engine:146] - Engine stopped
+2025-10-20 21:44:17,198 - INFO - [gui_application:189] - Bot shutdown complete.
+2025-10-20 21:44:24,169 - WARNING - [exchange_manager:104] - Received empty or invalid order book from bybit for SOL/USDT.
+2025-10-20 21:44:25,631 - WARNING - [exchange_manager:104] - Received empty or invalid order book from bybit for ADA/USDT.
+2025-10-20 21:44:26,412 - WARNING - [exchange_manager:104] - Received empty or invalid order book from bybit for AVAX/USDT.
+2025-10-20 21:44:29,773 - WARNING - [exchange_manager:104] - Received empty or invalid order book from binance for SHIB/USDT.
+2025-10-20 21:44:29,983 - WARNING - [exchange_manager:95] - Insufficient liquidity to meet trade size of $600.00.
+2025-10-20 21:44:30,006 - INFO - [gui_application:73] - [ENGINE STATUS] stopped
+2025-10-20 21:44:38,894 - WARNING - [exchange_manager:104] - Received empty or invalid order book from bybit for SOL/USDT.
+2025-10-20 21:44:41,089 - WARNING - [exchange_manager:104] - Received empty or invalid order book from bybit for ADA/USDT.
+2025-10-20 21:44:41,858 - WARNING - [exchange_manager:104] - Received empty or invalid order book from bybit for AVAX/USDT.
+2025-10-20 21:44:44,522 - WARNING - [exchange_manager:104] - Received empty or invalid order book from binance for SHIB/USDT.
+2025-10-20 21:44:44,712 - WARNING - [exchange_manager:95] - Insufficient liquidity to meet trade size of $600.00.
+2025-10-20 21:44:53,016 - WARNING - [exchange_manager:104] - Received empty or invalid order book from bybit for SOL/USDT.
+2025-10-20 21:44:54,510 - WARNING - [exchange_manager:104] - Received empty or invalid order book from bybit for ADA/USDT.
+2025-10-20 21:44:55,263 - WARNING - [exchange_manager:104] - Received empty or invalid order book from bybit for AVAX/USDT.
+2025-10-20 21:44:58,870 - WARNING - [exchange_manager:104] - Received empty or invalid order book from binance for SHIB/USDT.
+2025-10-20 21:44:59,388 - WARNING - [exchange_manager:95] - Insufficient liquidity to meet trade size of $600.00.
+2025-10-20 21:45:06,473 - WARNING - [exchange_manager:104] - Received empty or invalid order book from bybit for SOL/USDT.
+2025-10-20 21:45:08,380 - WARNING - [exchange_manager:104] - Received empty or invalid order book from bybit for ADA/USDT.
+2025-10-20 21:45:09,122 - WARNING - [exchange_manager:104] - Received empty or invalid order book from bybit for AVAX/USDT.
+2025-10-20 21:45:12,366 - WARNING - [exchange_manager:104] - Received empty or invalid order book from binance for SHIB/USDT.
+2025-10-20 21:45:12,557 - WARNING - [exchange_manager:95] - Insufficient liquidity to meet trade size of $600.00.
+2025-10-20 21:45:26,092 - INFO - [logging_config:98] - Logging initialized -> human log: D:\Dev\py\crypto_arbitrage_bot\logs\bot.log | json log: D:\Dev\py\crypto_arbitrage_bot\logs\bot_structured.log
+2025-10-20 21:45:28,205 - INFO - [exchange_manager:31] - Initialized Okx client.
+2025-10-20 21:45:30,905 - INFO - [exchange_manager:31] - Initialized Binance client.
+2025-10-20 21:45:35,835 - INFO - [exchange_manager:31] - Initialized Bybit client.
+2025-10-20 21:45:35,836 - INFO - [bot_engine:90] - SyncArbitrageEngine initialized (poll=0.75s)
+2025-10-20 21:46:02,443 - INFO - [gui_application:149] - --- Starting New Session ---
+2025-10-20 21:46:02,443 - INFO - [gui_application:150] - Mode: LIVE TRADING
+2025-10-20 21:46:02,444 - INFO - [gui_application:152] - Sizing Mode: FIXED @ $600.00
+2025-10-20 21:46:02,444 - INFO - [gui_application:157] - Symbols: ETH/USDT
+2025-10-20 21:46:05,464 - INFO - [gui_application:73] - [ENGINE STATUS] warming_up
+2025-10-20 21:46:05,464 - INFO - [gui_application:73] - [ENGINE STATUS] engine_started
+2025-10-20 21:46:11,442 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 21:46:17,368 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 21:46:18,119 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 21:46:22,871 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 21:46:30,086 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 21:46:30,836 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 21:46:36,014 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 21:46:36,765 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 21:46:41,928 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 21:46:42,680 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 21:46:55,597 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 21:47:01,780 - INFO - [gui_application:73] - [ENGINE STATUS] engine_stopping
+2025-10-20 21:47:01,781 - INFO - [trade_executor:230] - [Trade] received stop signal
+2025-10-20 21:47:06,783 - WARNING - [bot_engine:145] - Engine loop did not stop within 5.0s
+2025-10-20 21:47:06,783 - INFO - [bot_engine:146] - Engine stopped
+2025-10-20 21:47:06,818 - INFO - [gui_application:189] - Bot shutdown complete.
+2025-10-20 21:47:11,649 - INFO - [gui_application:73] - [ENGINE STATUS] stopped
+2025-10-20 23:03:07,782 - INFO - [logging_config:98] - Logging initialized -> human log: D:\Dev\py\crypto_arbitrage_bot\logs\bot.log | json log: D:\Dev\py\crypto_arbitrage_bot\logs\bot_structured.log
+2025-10-20 23:03:09,841 - INFO - [exchange_manager:29] - Initialized Okx client.
+2025-10-20 23:03:12,977 - INFO - [exchange_manager:29] - Initialized Binance client.
+2025-10-20 23:03:18,750 - INFO - [exchange_manager:29] - Initialized Bybit client.
+2025-10-20 23:03:18,751 - INFO - [bot_engine:90] - SyncArbitrageEngine initialized (poll=0.75s)
+2025-10-20 23:03:29,496 - INFO - [gui_application:149] - --- Starting New Session ---
+2025-10-20 23:03:29,497 - INFO - [gui_application:150] - Mode: LIVE TRADING
+2025-10-20 23:03:29,497 - INFO - [gui_application:152] - Sizing Mode: FIXED @ $600.00
+2025-10-20 23:03:29,497 - INFO - [gui_application:157] - Symbols: ETH/USDT
+2025-10-20 23:03:32,300 - INFO - [gui_application:73] - [ENGINE STATUS] warming_up
+2025-10-20 23:03:32,300 - INFO - [gui_application:73] - [ENGINE STATUS] engine_started
+2025-10-20 23:03:42,456 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:03:43,207 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:03:47,806 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:03:48,556 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:03:52,941 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:03:53,691 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:03:58,518 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:03:59,268 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:04:05,172 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:04:05,923 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:04:11,311 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:04:12,061 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:04:23,347 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:04:24,098 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:04:34,648 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:04:35,398 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:06:21,683 - INFO - [logging_config:98] - Logging initialized -> human log: D:\Dev\py\crypto_arbitrage_bot\logs\bot.log | json log: D:\Dev\py\crypto_arbitrage_bot\logs\bot_structured.log
+2025-10-20 23:06:23,831 - INFO - [exchange_manager:29] - Initialized Okx client.
+2025-10-20 23:06:26,944 - INFO - [exchange_manager:29] - Initialized Binance client.
+2025-10-20 23:06:32,797 - INFO - [exchange_manager:29] - Initialized Bybit client.
+2025-10-20 23:06:32,798 - INFO - [bot_engine:90] - SyncArbitrageEngine initialized (poll=0.75s)
+2025-10-20 23:06:46,492 - INFO - [gui_application:149] - --- Starting New Session ---
+2025-10-20 23:06:46,493 - INFO - [gui_application:150] - Mode: LIVE TRADING
+2025-10-20 23:06:46,493 - INFO - [gui_application:152] - Sizing Mode: FIXED @ $600.00
+2025-10-20 23:06:46,493 - INFO - [gui_application:157] - Symbols: ETH/USDT
+2025-10-20 23:06:49,435 - INFO - [gui_application:73] - [ENGINE STATUS] engine_started
+2025-10-20 23:09:08,192 - INFO - [logging_config:98] - Logging initialized -> human log: D:\Dev\py\crypto_arbitrage_bot\logs\bot.log | json log: D:\Dev\py\crypto_arbitrage_bot\logs\bot_structured.log
+2025-10-20 23:09:10,286 - INFO - [exchange_manager:29] - Initialized Okx client.
+2025-10-20 23:09:13,186 - INFO - [exchange_manager:29] - Initialized Binance client.
+2025-10-20 23:09:19,424 - INFO - [exchange_manager:29] - Initialized Bybit client.
+2025-10-20 23:09:19,425 - INFO - [bot_engine:79] - SyncArbitrageEngine initialized (poll=0.75s)
+2025-10-20 23:09:29,207 - INFO - [gui_application:149] - --- Starting New Session ---
+2025-10-20 23:09:29,208 - INFO - [gui_application:150] - Mode: LIVE TRADING
+2025-10-20 23:09:29,208 - INFO - [gui_application:152] - Sizing Mode: FIXED @ $600.00
+2025-10-20 23:09:29,208 - INFO - [gui_application:157] - Symbols: ETH/USDT
+2025-10-20 23:09:31,943 - INFO - [gui_application:73] - [ENGINE STATUS] warming_up
+2025-10-20 23:09:31,944 - INFO - [gui_application:73] - [ENGINE STATUS] engine_started
+2025-10-20 23:09:38,916 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:09:54,239 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:10:17,089 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:10:26,075 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:10:32,160 - INFO - [logging_config:98] - Logging initialized -> human log: D:\Dev\py\crypto_arbitrage_bot\logs\bot.log | json log: D:\Dev\py\crypto_arbitrage_bot\logs\bot_structured.log
+2025-10-20 23:10:34,379 - INFO - [exchange_manager:52] - Initialized Okx client.
+2025-10-20 23:10:38,364 - INFO - [exchange_manager:52] - Initialized Binance client.
+2025-10-20 23:10:41,273 - INFO - [exchange_manager:52] - Initialized Bybit client.
+2025-10-20 23:10:41,273 - INFO - [bot_engine:79] - SyncArbitrageEngine initialized (poll=0.75s)
+2025-10-20 23:10:41,874 - CRITICAL - [main:70] - An unexpected fatal error occurred: 'ExchangeManager' object has no attribute 'get_all_clients'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\main.py", line 63, in <module>
+    app = App(config, EXCHANGES)
+  File "D:\Dev\py\crypto_arbitrage_bot\gui_components\gui_application.py", line 68, in __init__
+    self.create_widgets()
+    ~~~~~~~~~~~~~~~~~~~^^
+  File "D:\Dev\py\crypto_arbitrage_bot\gui_components\gui_application.py", line 118, in create_widgets
+    self.live_ops_tab = LiveOpsTab(tab_view.tab("Live Operations"), self.config, self.engine)
+                        ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Dev\py\crypto_arbitrage_bot\gui_components\live_ops_tab.py", line 29, in __init__
+    self.build_market_scan_panel()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "D:\Dev\py\crypto_arbitrage_bot\gui_components\live_ops_tab.py", line 49, in build_market_scan_panel
+    clients = self.bot.exchange_manager.get_all_clients()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'ExchangeManager' object has no attribute 'get_all_clients'
+2025-10-20 23:12:01,755 - INFO - [logging_config:98] - Logging initialized -> human log: D:\Dev\py\crypto_arbitrage_bot\logs\bot.log | json log: D:\Dev\py\crypto_arbitrage_bot\logs\bot_structured.log
+2025-10-20 23:12:04,028 - INFO - [exchange_manager:42] - Initialized Okx client.
+2025-10-20 23:12:06,834 - INFO - [exchange_manager:42] - Initialized Binance client.
+2025-10-20 23:12:12,030 - INFO - [exchange_manager:42] - Initialized Bybit client.
+2025-10-20 23:12:12,030 - INFO - [bot_engine:79] - SyncArbitrageEngine initialized (poll=0.75s)
+2025-10-20 23:12:17,333 - INFO - [gui_application:149] - --- Starting New Session ---
+2025-10-20 23:12:17,333 - INFO - [gui_application:150] - Mode: LIVE TRADING
+2025-10-20 23:12:17,333 - INFO - [gui_application:152] - Sizing Mode: FIXED @ $600.00
+2025-10-20 23:12:17,333 - INFO - [gui_application:157] - Symbols: ETH/USDT
+2025-10-20 23:12:19,742 - INFO - [gui_application:73] - [ENGINE STATUS] warming_up
+2025-10-20 23:12:19,742 - INFO - [gui_application:73] - [ENGINE STATUS] engine_started
+2025-10-20 23:12:27,376 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:12:32,140 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:12:39,193 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:12:45,580 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:12:51,064 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:12:55,055 - INFO - [gui_application:73] - [ENGINE STATUS] engine_stopping
+2025-10-20 23:12:55,055 - INFO - [trade_executor:230] - [Trade] received stop signal
+2025-10-20 23:12:56,410 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:13:00,057 - INFO - [bot_engine:126] - Engine stopped
+2025-10-20 23:13:00,093 - INFO - [gui_application:189] - Bot shutdown complete.
+2025-10-20 23:13:05,730 - INFO - [gui_application:73] - [ENGINE STATUS] stopped
+2025-10-20 23:14:21,827 - INFO - [logging_config:98] - Logging initialized -> human log: D:\Dev\py\crypto_arbitrage_bot\logs\bot.log | json log: D:\Dev\py\crypto_arbitrage_bot\logs\bot_structured.log
+2025-10-20 23:14:24,454 - INFO - [exchange_manager:42] - Initialized Okx client.
+2025-10-20 23:14:27,181 - INFO - [exchange_manager:42] - Initialized Binance client.
+2025-10-20 23:14:33,175 - INFO - [exchange_manager:42] - Initialized Bybit client.
+2025-10-20 23:14:33,175 - INFO - [bot_engine:79] - SyncArbitrageEngine initialized (poll=0.75s)
+2025-10-20 23:14:39,639 - INFO - [gui_application:149] - --- Starting New Session ---
+2025-10-20 23:14:39,640 - INFO - [gui_application:150] - Mode: LIVE TRADING
+2025-10-20 23:14:39,640 - INFO - [gui_application:152] - Sizing Mode: FIXED @ $600.00
+2025-10-20 23:14:39,640 - INFO - [gui_application:157] - Symbols: ETH/USDT
+2025-10-20 23:14:42,501 - INFO - [gui_application:73] - [ENGINE STATUS] warming_up
+2025-10-20 23:14:42,502 - INFO - [gui_application:73] - [ENGINE STATUS] engine_started
+2025-10-20 23:14:57,158 - INFO - [gui_application:73] - [ENGINE STATUS] ok
+2025-10-20 23:15:17,813 - INFO - [gui_application:73] - [ENGINE STATUS] ok

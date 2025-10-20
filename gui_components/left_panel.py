@@ -1,5 +1,3 @@
-#lef_panel.py 
-
 import customtkinter as ctk
 from typing import Any, Dict, Callable
 
@@ -22,7 +20,6 @@ class LeftPanel(ctk.CTkFrame):
 
         self.symbol_checkboxes: Dict[str, ctk.CTkCheckBox] = {}
         self.create_widgets()
-
         self.pack(expand=True, fill="both")
 
     # ----------------------------------------------------------------------
@@ -50,6 +47,7 @@ class LeftPanel(ctk.CTkFrame):
         ctk.CTkLabel(
             sizing_frame, text="Sizing Mode", font=ctk.CTkFont(weight="bold")
         ).grid(row=0, column=0, columnspan=2, pady=(5, 0))
+
         self.sizing_mode_var = ctk.StringVar(
             value=self.config["trading_parameters"].get("sizing_mode", "fixed")
         )
@@ -62,6 +60,7 @@ class LeftPanel(ctk.CTkFrame):
             command=self._toggle_sizing_frames,
         )
         self.fixed_radio.grid(row=1, column=0, padx=(10, 5), pady=5, sticky="w")
+
         self.dynamic_radio = ctk.CTkRadioButton(
             sizing_frame,
             text="Dynamic",
@@ -117,12 +116,15 @@ class LeftPanel(ctk.CTkFrame):
         ctk.CTkLabel(symbol_frame, text="Symbol Selection", font=ctk.CTkFont(weight="bold")).pack(
             anchor="w", padx=10, pady=(5, 0)
         )
+
         symbol_scroll_frame = ctk.CTkScrollableFrame(symbol_frame, height=150)
         symbol_scroll_frame.pack(fill="x", expand=True, padx=5, pady=5)
+
         for symbol in self.config["trading_parameters"]["symbols_to_scan"]:
             checkbox = ctk.CTkCheckBox(symbol_scroll_frame, text=symbol)
             checkbox.pack(anchor="w", padx=10, pady=2)
-            checkbox.select()
+            # ✅ Start deselected
+            checkbox.deselect()
             self.symbol_checkboxes[symbol] = checkbox
 
         # --- Tabs (Stats + Wallet) ---
@@ -158,45 +160,22 @@ class LeftPanel(ctk.CTkFrame):
         )
         self.status_label.grid(row=0, column=0, columnspan=2, padx=10, pady=(5, 10))
 
-        # Actual stats (match engine keys)
         label_style = dict(padx=10, pady=5, sticky="w")
         value_style = dict(padx=10, pady=5, sticky="e")
 
-        ctk.CTkLabel(self.stats_frame, text="Session Profit (USDT):").grid(row=1, column=0, **label_style)
-        self.session_profit_label = ctk.CTkLabel(self.stats_frame, text="0.00")
-        self.session_profit_label.grid(row=1, column=1, **value_style)
+        self._add_stat("Session Profit (USDT):", "session_profit_label", 1, label_style, value_style)
+        self._add_stat("Trades:", "trade_count_label", 2, label_style, value_style)
+        self._add_stat("Win Rate:", "win_rate_label", 3, label_style, value_style, "–")
+        self._add_stat("Avg Profit/Trade:", "avg_profit_label", 4, label_style, value_style)
+        self._add_stat("Failed Trades:", "failed_trades_label", 5, label_style, value_style)
+        self._add_stat("Neutralized Trades:", "neutral_trades_label", 6, label_style, value_style)
+        self._add_stat("Critical Failures:", "critical_failures_label", 7, label_style, value_style, text_color="red")
+        self._add_stat("Runtime:", "runtime_label", 8, label_style, value_style)
 
-        ctk.CTkLabel(self.stats_frame, text="Trades:").grid(row=2, column=0, **label_style)
-        self.trade_count_label = ctk.CTkLabel(self.stats_frame, text="0")
-        self.trade_count_label.grid(row=2, column=1, **value_style)
-
-        ctk.CTkLabel(self.stats_frame, text="Win Rate:").grid(row=3, column=0, **label_style)
-        self.win_rate_label = ctk.CTkLabel(self.stats_frame, text="–")
-        self.win_rate_label.grid(row=3, column=1, **value_style)
-
-        ctk.CTkLabel(self.stats_frame, text="Avg Profit/Trade:").grid(row=4, column=0, **label_style)
-        self.avg_profit_label = ctk.CTkLabel(self.stats_frame, text="0.00")
-        self.avg_profit_label.grid(row=4, column=1, **value_style)
-
-        ctk.CTkLabel(self.stats_frame, text="Failed Trades:").grid(row=5, column=0, **label_style)
-        self.failed_trades_label = ctk.CTkLabel(self.stats_frame, text="0")
-        self.failed_trades_label.grid(row=5, column=1, **value_style)
-
-        ctk.CTkLabel(self.stats_frame, text="Neutralized Trades:").grid(row=6, column=0, **label_style)
-        self.neutral_trades_label = ctk.CTkLabel(self.stats_frame, text="0")
-        self.neutral_trades_label.grid(row=6, column=1, **value_style)
-
-        ctk.CTkLabel(self.stats_frame, text="Critical Failures:", text_color="gray").grid(
-            row=7, column=0, **label_style
-        )
-        self.critical_failures_label = ctk.CTkLabel(
-            self.stats_frame, text="0", text_color="red"
-        )
-        self.critical_failures_label.grid(row=7, column=1, **value_style)
-
-        ctk.CTkLabel(self.stats_frame, text="Runtime:").grid(row=8, column=0, **label_style)
-        self.runtime_label = ctk.CTkLabel(self.stats_frame, text="00:00:00")
-        self.runtime_label.grid(row=8, column=1, **value_style)
+    def _add_stat(self, text: str, attr_name: str, row: int, label_style: dict, value_style: dict, default: str = "0", text_color=None):
+        ctk.CTkLabel(self.stats_frame, text=text, text_color=text_color).grid(row=row, column=0, **label_style)
+        setattr(self, attr_name, ctk.CTkLabel(self.stats_frame, text=default))
+        getattr(self, attr_name).grid(row=row, column=1, **value_style)
 
     # ----------------------------------------------------------------------
     # CONTROL & UPDATE METHODS
@@ -243,12 +222,10 @@ class LeftPanel(ctk.CTkFrame):
         state = "normal" if is_enabled else "disabled"
         self.start_button.configure(state="normal" if is_enabled else "disabled")
         self.stop_button.configure(state="disabled" if is_enabled else "normal")
-        for radio in [self.fixed_radio, self.dynamic_radio]:
-            radio.configure(state=state)
-        self.trade_size_entry.configure(state=state)
-        self.dynamic_pct_entry.configure(state=state)
-        self.dynamic_max_entry.configure(state=state)
-        self.dry_run_checkbox.configure(state=state)
+
+        for w in [self.fixed_radio, self.dynamic_radio, self.trade_size_entry, self.dynamic_pct_entry, self.dynamic_max_entry, self.dry_run_checkbox]:
+            w.configure(state=state)
+
         for checkbox in self.symbol_checkboxes.values():
             checkbox.configure(state=state)
 
@@ -274,9 +251,7 @@ class LeftPanel(ctk.CTkFrame):
         try:
             self.session_profit_label.configure(text=f"{session_profit:.2f}")
             self.trade_count_label.configure(text=str(trade_count))
-            self.win_rate_label.configure(
-                text=f"{win_rate:.1f} %" if win_rate is not None else "–"
-            )
+            self.win_rate_label.configure(text=f"{win_rate:.1f} %" if win_rate is not None else "–")
             self.avg_profit_label.configure(text=f"{avg_profit:.2f}")
             self.failed_trades_label.configure(text=str(failed_trades))
             self.neutral_trades_label.configure(text=str(neutralized_trades))
