@@ -6,7 +6,7 @@ import itertools
 import logging
 import time
 import matplotlib.pyplot as plt  # <-- NEW IMPORT
-from performance_analyzer import PerformanceAnalyzer
+from core.performance_analyzer import PerformanceAnalyzer
 
 # Set precision for decimal calculations
 getcontext().prec = 28
@@ -172,8 +172,8 @@ class Backtester:
             print("Could not analyze backtest results.")
 
 if __name__ == '__main__':
-    import logging_config
-    from utils import load_config
+    import config.logging_config as logging_config
+    from core.utils import load_config
     import main
 
     main.setup_simple_logging()

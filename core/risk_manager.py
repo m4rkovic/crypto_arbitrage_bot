@@ -12,7 +12,7 @@ import time
 from typing import Any, Dict, Optional
 
 from data_models import Opportunity
-from exchange_manager import ExchangeManager
+from core.exchange_manager import ExchangeManager
 
 
 class RiskManager:

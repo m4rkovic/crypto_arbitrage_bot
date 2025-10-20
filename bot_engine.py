@@ -1,525 +1,765 @@
 # bot_engine.py
+"""
+Synchronous, GUI-friendly engine that orchestrates:
+- ExchangeManager (market data snapshot)
+- Analyzer (opportunity detection)
+- RiskManager (position & risk checks)
+- TradeExecutor (blocking order placement/monitoring)
+and streams lightweight updates back to the GUI via callbacks.
 
-import ccxt
-import time
+Design goals:
+- No async. The engine runs in a dedicated background thread so GUI never freezes.
+- Single-trade-at-a-time safeguard (engine-level lock).
+- Graceful start/stop with strict state transitions.
+- Backward-compatible: uses duck-typing to call existing methods if names differ.
+"""
+
+from __future__ import annotations
 import threading
-import logging
-import itertools
-from typing import Any, Dict, List, Optional
+import time
+import traceback
+from typing import Callable, Dict, Optional, Any, List
 
-from data_models import Opportunity
-from exchange_manager import ExchangeManager
-from trade_logger import TradeLogger
-from trade_executor import TradeExecutor
-from risk_manager import RiskManager
-from rebalancer import Rebalancer
-from utils import retry_ccxt_call
+from config.logging_config import get_logger
+
+# Optional types (keeps imports flexible)
+try:
+    from data_models import Opportunity  # type: ignore
+except Exception:
+    class Opportunity:  # fallback
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+
 
 class ArbitrageBot:
-    def __init__(self, config: Dict[str, Any], exchanges_config: Dict[str, Any], update_queue: Any):
-        self.config = config
-        self.update_queue = update_queue
-        self.logger = logging.getLogger(__name__)
-        self.exchange_manager = ExchangeManager(exchanges_config)
-        self.trade_logger = TradeLogger()
-        self.trade_executor = TradeExecutor(config, self.exchange_manager, self.trade_logger)
-        self.risk_manager = RiskManager(config, self.exchange_manager)
-        self.rebalancer = Rebalancer(config, self.exchange_manager)
-        self.running = False
-        self.state_lock = threading.Lock()
-        self.session_id = f"session_{int(time.time())}"
-        self.start_time: float = 0.0
-        self.last_portfolio_update: float = 0.0
-        self.last_activity_time: float = 0.0
-        self.trade_count: int = 0
-        self.successful_trades: int = 0
-        self.failed_trades: int = 0
-        self.neutralized_trades: int = 0
-        self.critical_failures: int = 0
-        self.session_profit: float = 0.0
-        self.logger.info(f"New bot instance created with Session ID: {self.session_id}")
+    """
+    Synchronous engine that runs its loop on a dedicated thread (spawned by GUI).
+    GUI calls engine.run(symbols) inside its own thread and controls stop().
+    """
 
+    def __init__(
+        self,
+        exchange_manager: Any,
+        analyzer: Any,
+        risk_manager: Any,
+        trade_executor: Any,
+        *,
+        config: Optional[Dict[str, Any]] = None,
+        rebalancer: Optional[Any] = None,
+        performance_analyzer: Optional[Any] = None,
+        poll_interval_sec: float = 0.75,
+        gui_callbacks: Optional[Dict[str, Callable[..., None]]] = None,
+    ):
+        self.log = get_logger(__name__)
+        self.exchange_manager = exchange_manager
+        self.analyzer = analyzer
+        self.risk_manager = risk_manager
+        self.trade_executor = trade_executor
+        self.rebalancer = rebalancer
+        self.performance_analyzer = performance_analyzer
 
-    def _get_current_stats(self) -> Dict[str, Any]:
-        return {
-            'trades': self.trade_count, 'successful': self.successful_trades,
-            'failed': self.failed_trades, 'neutralized': self.neutralized_trades,
-            'critical': self.critical_failures, 'profit': self.session_profit
-        }
+        # YAML config (GUI mutates trading_parameters at runtime)
+        self.config: Dict[str, Any] = config or {"trading_parameters": {}}
 
-    def send_gui_update(self, update_type: str, data: Any):
-        self.update_queue.put({"type": update_type, "data": data})
+        self.poll_interval_sec = max(0.05, float(poll_interval_sec))
+        self._gui: Dict[str, Callable[..., None]] = gui_callbacks or {}
 
-    def _get_taker_fee(self, client: ccxt.Exchange, symbol: str) -> float:
+        # Threading/state
+        self._thread: Optional[threading.Thread] = None
+        self._stop_evt = threading.Event()
+        self._state_lock = threading.RLock()
+        self.state_lock = self._state_lock       # public alias expected by GUI
+        self._running = False
+        self.start_time = 0.0                     # GUI uses for runtime clock
+
+        # Session stats (GUI reads via _get_current_stats)
+        self.session_profit = 0.0
+        self.trade_count = 0
+        self.successful_trades = 0
+        self.failed_trades = 0
+        self.neutralized_trades = 0
+        self.critical_failures = 0
+
+        # Trade concurrency
+        self._trade_lock = threading.RLock()
+        self._last_status = "initialized"
+
+        # Diagnostics
+        self._loop_tick = 0
+
+        self.log.info("SyncArbitrageEngine initialized (poll=%.2fs)", self.poll_interval_sec)
+
+    # ---------- Public API expected by GUI ----------
+
+    @property
+    def running(self) -> bool:
+        return self.is_running()
+
+    def run(self, selected_symbols: Optional[List[str]] = None) -> None:
+        """
+        Thread entry-point used by GUI. Blocks until stopped.
+        Keeps full backward-compatibility with the previous sync engine.
+        """
+        # apply selected symbols if provided
+        if selected_symbols:
+            self.config.setdefault("trading_parameters", {})
+            self.config["trading_parameters"]["symbols_to_scan"] = list(selected_symbols)
+
+        with self._state_lock:
+            if self._running:
+                self.log.warning("Engine already running; ignoring run()")
+                return
+            self._stop_evt.clear()
+            self._running = True
+            self.start_time = time.time()
+
+        self._emit("on_status", "engine_started")
         try:
-            market = client.markets.get(symbol, {})
-            return market.get('taker', self.config['trading_parameters']['fee_percent'] / 100)
-        except (KeyError, AttributeError):
-            return self.config['trading_parameters']['fee_percent'] / 100
-
-    def check_for_opportunity(self, prices: Dict, symbol: str, trade_size: float) -> Optional[Opportunity]:
-        params = self.config['trading_parameters']
-        best_opportunity = None
-
-        for buy_ex, sell_ex in itertools.permutations(self.exchange_manager.get_all_clients().keys(), 2):
-            buy_price = prices.get(buy_ex, {}).get('ask')
-            sell_price = prices.get(sell_ex, {}).get('bid')
-            
-            if not all([buy_price, sell_price]): continue
-
-            buy_client = self.exchange_manager.get_client(buy_ex)
-            sell_client = self.exchange_manager.get_client(sell_ex)
-            if not buy_client or not sell_client: continue
-
-            buy_fee_rate = self._get_taker_fee(buy_client, symbol)
-            sell_fee_rate = self._get_taker_fee(sell_client, symbol)
-            amount = trade_size / buy_price
-            
-            cost_of_buy = trade_size
-            fee_on_buy = cost_of_buy * buy_fee_rate
-            proceeds_from_sell = (amount * sell_price)
-            fee_on_sell = proceeds_from_sell * sell_fee_rate
-            net_profit = proceeds_from_sell - cost_of_buy - fee_on_buy - fee_on_sell
-
-            if net_profit > params['min_profit_usd']:
-                current_opp = Opportunity(symbol, buy_ex, sell_ex, buy_price, sell_price, amount, net_profit)
-                if not best_opportunity or net_profit > best_opportunity.net_profit_usd:
-                    best_opportunity = current_opp
-        return best_opportunity
-
-    def _get_full_portfolio(self, active_symbols: List[str]) -> Dict[str, Any]:
-        full_portfolio = {"total_usd_value": 0.0, "assets": {}}
-        assets_to_check = set(['USDT'])
-        for symbol in active_symbols:
-            assets_to_check.add(symbol.split('/')[0])
-        for ex_name, client in self.exchange_manager.get_all_clients().items():
-            balances = self.exchange_manager.get_balance(client, force_refresh=True)
-            if balances:
-                for asset in assets_to_check:
-                    if asset in balances['total'] and balances['total'][asset] > 0:
-                        if asset not in full_portfolio["assets"]:
-                            full_portfolio["assets"][asset] = {"balance": 0.0, "value_usd": 0.0}
-                        full_portfolio["assets"][asset]["balance"] += balances['total'][asset]
-        primary_client = next(iter(self.exchange_manager.get_all_clients().values()), None)
-        if not primary_client: return full_portfolio
-        for asset, data in full_portfolio["assets"].items():
-            if asset == 'USDT':
-                data["value_usd"] = data["balance"]
-            else:
-                try:
-                    price = self.exchange_manager.get_market_price(primary_client, f"{asset}/USDT")
-                    data["value_usd"] = (data["balance"] * price) if price else 0.0
-                except Exception:
-                    data["value_usd"] = 0.0
-            full_portfolio["total_usd_value"] += data["value_usd"]
-        return full_portfolio
-
-    def _take_and_send_initial_portfolio_snapshot(self, active_symbols: List[str]):
-        """Takes and sends the initial portfolio snapshot to the GUI."""
-        self.logger.info("Taking initial portfolio snapshot for performance analysis...")
-        initial_portfolio = self._get_full_portfolio(active_symbols)
-        self.send_gui_update('initial_portfolio', initial_portfolio)
-        self.last_portfolio_update = time.time()
-        return initial_portfolio
-
-    def _update_and_send_portfolio_state(self, active_symbols: List[str]) -> Dict[str, Any]:
-        """Gets portfolio, sends GUI updates, and returns data for rebalancer."""
-        current_portfolio = self._get_full_portfolio(active_symbols)
-        balances_only = {}
-        all_assets = set(current_portfolio.get("assets", {}).keys())
-        for ex_name, client in self.exchange_manager.get_all_clients().items():
-            balance_data = self.exchange_manager.get_balance(client, force_refresh=False)
-            if balance_data:
-                balances_only[ex_name] = {k: v for k, v in balance_data.get('total', {}).items() if v > 0 and k in all_assets}
-        
-        if balances_only:
-            payload = {"portfolio": current_portfolio, "balances": balances_only}
-            self.send_gui_update('portfolio_update', payload)
-
-        self.last_portfolio_update = time.time()
-        return current_portfolio
-
-    def run(self, symbols_to_scan: Optional[List[str]] = None):
-        self.running = True
-        self.start_time = time.time()
-        self.last_activity_time = self.start_time
-        self.logger.info("Bot started. Scanning for opportunities...")
-        symbols = symbols_to_scan if symbols_to_scan is not None else self.config['trading_parameters']['symbols_to_scan']
-        
-        self._take_and_send_initial_portfolio_snapshot(symbols)
-        current_portfolio = self._update_and_send_portfolio_state(symbols)
-        
-        try:
-            while self.running:
-                now = time.time()
-                rebalance_interval = self.config.get('rebalancing', {}).get('rebalance_interval_s', 3600)
-                if now - self.last_portfolio_update > rebalance_interval:
-                    current_portfolio = self._update_and_send_portfolio_state(symbols)
-                    if self.config.get('rebalancing', {}).get('enabled', False):
-                        self.logger.info("Running periodic rebalancing check...")
-                        self.rebalancer.run_rebalancing_check(current_portfolio)
-
-                trade_size_usdt = self.config['trading_parameters']['trade_size_usdt']
-                
-                for symbol in symbols:
-                    if not self.running: break
-                    try:
-                        prices = self.exchange_manager.get_market_data(symbol, trade_size_usdt)
-                        self.trade_logger.log_scan_data(symbol, prices)
-                        opportunity = self.check_for_opportunity(prices, symbol, trade_size_usdt)
-
-                        market_data_payload = {'symbol': symbol, 'is_profitable': opportunity is not None}
-                        all_bids = [p['bid'] for p in prices.values() if p.get('bid')]
-                        all_asks = [p['ask'] for p in prices.values() if p.get('ask')]
-                        best_bid = max(all_bids) if all_bids else 0
-                        best_ask = min(all_asks) if all_asks else 0
-                        spread_pct = ((best_bid - best_ask) / best_ask) * 100 if best_ask > 0 else 0
-                        market_data_payload['spread_pct'] = spread_pct
-                        for ex_name, price_data in prices.items():
-                            market_data_payload[f'{ex_name}_bid'] = price_data['bid']
-                            market_data_payload[f'{ex_name}_ask'] = price_data['ask']
-                        self.send_gui_update('market_data', market_data_payload)
-                        
-                        if opportunity:
-                            self.logger.info(f"Opportunity found for {symbol}! Est Profit: ${opportunity.net_profit_usd:.4f}")
-                            self.send_gui_update('opportunity_found', {'symbol': symbol, 'spread_pct': (opportunity.net_profit_usd / trade_size_usdt) * 100})
-                            
-                            if self.risk_manager.check_balances(opportunity, trade_size_usdt):
-                                with self.state_lock: self.trade_count += 1
-                                result = self.trade_executor.execute_and_monitor(opportunity, self.session_id)
-                                with self.state_lock:
-                                    if result.get('status') == 'SUCCESS':
-                                        self.successful_trades += 1
-                                        self.session_profit += result.get('profit', 0.0)
-                                        self.last_activity_time = time.time()
-                                    else:
-                                        self.failed_trades += 1
-                                        if result.get('status') == 'CRITICAL_STUCK_ORDER':
-                                            self.critical_failures += 1
-                                self.send_gui_update('stats', self._get_current_stats())
-                                current_portfolio = self._update_and_send_portfolio_state(symbols)
-                                time.sleep(self.config['trading_parameters'].get('post_trade_delay_s', 5))
-                    except Exception as e:
-                        self.logger.error(f"CRITICAL UNHANDLED ERROR in symbol loop for {symbol}: {e}", exc_info_True)
-                        self.send_gui_update('critical_error', f"A critical error occurred: {e}")
-                        time.sleep(10)
-                
-                now = time.time()
-                if now - self.last_activity_time > 15:
-                    self.logger.info("Status: No profitable trades found recently. Still scanning markets...")
-                    self.last_activity_time = now
-                
-                time.sleep(self.config['trading_parameters']['scan_interval_s'])
+            self._run_loop()  # blocking loop (runs inside GUI-created thread)
         finally:
-            self.logger.info("Bot run loop finished. Cleaning up resources.")
-            self.exchange_manager.close_all_clients()
-            self.send_gui_update('stopped', {})
+            with self._state_lock:
+                self._running = False
+            self._emit("on_status", "engine_stopped")
 
-    def stop(self):
-        self.logger.info("Stop command received. Shutting down...")
-        self.running = False
-        
+    def stop(self, join_timeout: float = 5.0) -> None:
+        with self._state_lock:
+            if not self._running:
+                self.log.warning("Engine not running; ignoring stop()")
+                return
+            self._stop_evt.set()
+            self._emit("on_status", "engine_stopping")
+
+            # Request graceful stop from executor if supported
+            try:
+                if hasattr(self.trade_executor, "request_stop"):
+                    self.trade_executor.request_stop()
+            except Exception as e:
+                self.log.exception("TradeExecutor.request_stop failed: %s", e)
+
+        # If GUI created a thread around run(), it will exit once _run_loop returns.
+        # We still try to join if we internally created a thread via start() (not used by GUI).
+        t = self._thread
+        if t and t.is_alive():
+            t.join(timeout=join_timeout)
+            if t.is_alive():
+                self.log.warning("Engine loop did not stop within %.1fs", join_timeout)
+        self.log.info("Engine stopped")
+
+    # Optional: if ever used directly instead of run()
+    def start(self) -> None:
+        with self._state_lock:
+            if self._running:
+                self.log.warning("Engine already running; ignoring start()")
+                return
+            self._stop_evt.clear()
+            self._running = True
+            self.start_time = time.time()
+            self._thread = threading.Thread(target=self._run_loop, name="arb-engine-loop", daemon=True)
+            self._thread.start()
+        self._emit("on_status", "engine_started")
+
+    def is_running(self) -> bool:
+        with self._state_lock:
+            return self._running
+
+    # ---------- Main loop ----------
+
+    def _run_loop(self) -> None:
+        try:
+            self._safe_emit_status("warming_up")
+            self._maybe_call(self.rebalancer, "on_engine_start")
+            self._maybe_call(self.performance_analyzer, "on_engine_start")
+
+            while not self._stop_evt.is_set():
+                start_ts = time.perf_counter()
+                self._loop_tick += 1
+                try:
+                    snapshot = self._fetch_market_snapshot()
+                    if snapshot is not None:
+                        self._emit("on_market_snapshot", snapshot)
+
+                        opps = self._find_opportunities(snapshot)
+                        if opps:
+                            self._emit("on_opportunities", [self._opp_to_gui(o) for o in opps])
+                            self._try_execute_first_safe(opps)
+
+                    self._maybe_call(self.rebalancer, "maybe_rebalance")
+                    if self.performance_analyzer and hasattr(self.performance_analyzer, "tick"):
+                        self.performance_analyzer.tick()
+
+                    self._safe_emit_status("ok")
+
+                except Exception as loop_err:
+                    err_txt = f"Engine loop error: {loop_err}"
+                    self.log.exception(err_txt)
+                    self._emit("on_error", err_txt)
+                    self._safe_emit_status("error")
+
+                elapsed = time.perf_counter() - start_ts
+                time.sleep(max(0.0, self.poll_interval_sec - elapsed))
+
+        except Exception as fatal:
+            self.log.exception("Engine fatal error: %s", fatal)
+            self._emit("on_error", f"Engine fatal error: {fatal}")
+        finally:
+            try:
+                self._maybe_call(self.rebalancer, "on_engine_stop")
+                self._maybe_call(self.performance_analyzer, "on_engine_stop")
+            except Exception:
+                pass
+            self._safe_emit_status("stopped")
+
+    # ---------- Helpers ----------
+
+    def _fetch_market_snapshot(self) -> Optional[dict]:
+        em = self.exchange_manager
+        snapshot: dict = {"timestamp": time.time()}
+
+        prices = self._maybe_call(em, "get_prices") or self._maybe_call(em, "fetch_prices") or self._maybe_call(em, "fetch_tickers")
+        snapshot["prices"] = prices
+
+        orderbooks = self._maybe_call(em, "get_orderbooks") or self._maybe_call(em, "fetch_orderbooks")
+        snapshot["orderbooks"] = orderbooks
+
+        balances = self._maybe_call(em, "get_balances") or self._maybe_call(em, "fetch_balances")
+        snapshot["balances"] = balances
+
+        return snapshot
+
+    def _find_opportunities(self, snapshot: dict) -> List[Opportunity]:
+        if self.analyzer is None:
+            return []
+        if hasattr(self.analyzer, "find_opportunities"):
+            opps = self.analyzer.find_opportunities(snapshot)
+        elif hasattr(self.analyzer, "analyze_opportunities"):
+            opps = self.analyzer.analyze_opportunities(snapshot)
+        else:
+            opps = self.analyzer.analyze(snapshot)  # type: ignore
+
+        result: List[Opportunity] = []
+        if isinstance(opps, list):
+            for o in opps:
+                if isinstance(o, Opportunity):
+                    result.append(o)
+                elif isinstance(o, dict):
+                    result.append(Opportunity(**o))
+                else:
+                    result.append(Opportunity(value=o))
+        return result
+
+    def _try_execute_first_safe(self, opps: List[Opportunity]) -> None:
+        if self._is_trade_in_progress():
+            return
+
+        best = self._pick_best(opps)
+        if best is None:
+            return
+
+        try:
+            approved = True
+            if hasattr(self.risk_manager, "approve"):
+                approved = bool(self.risk_manager.approve(best))
+            elif hasattr(self.risk_manager, "check"):
+                approved = bool(self.risk_manager.check(best))
+            if not approved:
+                self.log.debug("Opportunity rejected by risk manager.")
+                return
+        except Exception as e:
+            self.log.exception("RiskManager error: %s", e)
+            return
+
+        with self._trade_lock:
+            self._emit("on_trade_started", self._opp_to_gui(best))
+            self._safe_emit_status("trade_executing")
+
+            try:
+                if hasattr(self.trade_executor, "set_progress_callback"):
+                    self.trade_executor.set_progress_callback(
+                        lambda msg: self._emit("on_trade_update", {"message": msg})
+                    )
+                if hasattr(self.trade_executor, "set_busy"):
+                    self.trade_executor.set_busy(True)
+
+                if hasattr(self.trade_executor, "execute_and_monitor_opportunity"):
+                    result = self.trade_executor.execute_and_monitor_opportunity(best)
+                elif hasattr(self.trade_executor, "execute_opportunity"):
+                    result = self.trade_executor.execute_opportunity(best)
+                else:
+                    raise RuntimeError("TradeExecutor lacks execute_* method")
+
+                payload = result if isinstance(result, dict) else {"result": result}
+                payload.setdefault("opportunity", self._opp_to_gui(best))
+                self._emit("on_trade_finished", payload)
+                self._safe_emit_status("ok")
+
+                # naive stats (customize as needed)
+                self.trade_count += 1
+                if isinstance(result, dict) and result.get("status") == "filled":
+                    self.successful_trades += 1
+                    self.session_profit += float(result.get("pnl", 0.0))
+                elif isinstance(result, dict) and result.get("status") == "neutralized":
+                    self.neutralized_trades += 1
+                else:
+                    self.failed_trades += 1
+
+            except Exception as exec_err:
+                self.critical_failures += 1
+                self.log.exception("Trade execution failed: %s", exec_err)
+                self._emit("on_trade_finished", {
+                    "status": "failed",
+                    "error": str(exec_err),
+                    "traceback": traceback.format_exc(),
+                    "opportunity": self._opp_to_gui(best),
+                })
+                self._safe_emit_status("error")
+
+            finally:
+                try:
+                    if hasattr(self.trade_executor, "set_busy"):
+                        self.trade_executor.set_busy(False)
+                except Exception:
+                    pass
+
+    def _is_trade_in_progress(self) -> bool:
+        try:
+            if hasattr(self.trade_executor, "is_busy"):
+                return bool(self.trade_executor.is_busy())
+        except Exception:
+            pass
+        locked = not self._trade_lock.acquire(blocking=False)
+        if not locked:
+            self._trade_lock.release()
+        return locked
+
+    @staticmethod
+    def _pick_best(opps: List[Opportunity]) -> Optional[Opportunity]:
+        if not opps:
+            return None
+        try:
+            return max(opps, key=lambda o: getattr(o, "expected_profit", getattr(o, "profit", 0.0)))
+        except Exception:
+            return opps[0]
+
+    def _opp_to_gui(self, o: Opportunity) -> dict:
+        d = dict(vars(o))
+        for k in list(d.keys()):
+            if k in ("raw", "orderbook_a", "orderbook_b", "snapshot"):
+                d[k] = "<omitted>"
+        return d
+
+    def _maybe_call(self, obj: Any, method: str, *args, **kwargs):
+        if obj is None:
+            return None
+        fn = getattr(obj, method, None)
+        if callable(fn):
+            return fn(*args, **kwargs)
+        return None
+
+    def _emit(self, name: str, *args, **kwargs) -> None:
+        cb = self._gui.get(name)
+        if cb is None:
+            return
+        try:
+            cb(*args, **kwargs)
+        except Exception as e:
+            self.log.exception("GUI callback %s error: %s", name, e)
+
+    def _safe_emit_status(self, status: str) -> None:
+        self._last_status = status
+        self._emit("on_status", status)
+
+    # --------- Stats for GUI left panel ---------
+    def _get_current_stats(self) -> Dict[str, Any]:
+        with self._state_lock:
+            win_trades = self.successful_trades
+            total = max(1, self.trade_count)  # avoid div by zero
+            win_rate = (win_trades / total) * 100.0
+            avg_profit = (self.session_profit / total)
+            return {
+                "session_profit": self.session_profit,
+                "trade_count": self.trade_count,
+                "win_rate": win_rate if self.trade_count else None,
+                "avg_profit": avg_profit if self.trade_count else 0.0,
+                "failed_trades": self.failed_trades,
+                "neutralized_trades": self.neutralized_trades,
+                "critical_failures": self.critical_failures,
+            }
+
 # # bot_engine.py
+# """
+# Synchronous, GUI-friendly engine that orchestrates:
+# - ExchangeManager (market data snapshot)
+# - Analyzer (opportunity detection)
+# - RiskManager (position & risk checks)
+# - TradeExecutor (blocking order placement/monitoring)
+# and streams lightweight updates back to the GUI via callbacks.
 
-# import ccxt
-# import time
+# Design goals:
+# - No async. The engine runs in a dedicated background thread so GUI never freezes.
+# - Single-trade-at-a-time safeguard (engine-level lock).
+# - Graceful start/stop with strict state transitions.
+# - Backward-compatible: uses duck-typing to call existing methods if names differ.
+# """
+
+# from __future__ import annotations
 # import threading
-# import logging
-# import itertools
-# from typing import Any, Dict, List, Optional
+# import time
+# import traceback
+# from typing import Callable, Dict, Optional, Any, List
 
-# from data_models import Opportunity
-# from exchange_manager import ExchangeManager
-# from trade_logger import TradeLogger
-# from trade_executor import TradeExecutor
-# from risk_manager import RiskManager
-# from rebalancer import Rebalancer
-# from utils import retry_ccxt_call
+# from config.logging_config import get_logger
+
+# # Optional types (not strictly required if your project already provides them)
+# try:
+#     from data_models import Opportunity  # type: ignore
+# except Exception:
+#     class Opportunity:  # minimal fallback to avoid import errors
+#         def __init__(self, **kwargs):
+#             self.__dict__.update(kwargs)
+
 
 # class ArbitrageBot:
-#     def __init__(self, config: Dict[str, Any], exchanges_config: Dict[str, Any], update_queue: Any):
-#         self.config = config
-#         self.update_queue = update_queue
-#         self.logger = logging.getLogger(__name__)
-#         self.exchange_manager = ExchangeManager(exchanges_config)
-#         self.trade_logger = TradeLogger()
-#         self.trade_executor = TradeExecutor(config, self.exchange_manager, self.trade_logger)
-#         self.risk_manager = RiskManager(config, self.exchange_manager)
-#         self.rebalancer = Rebalancer(config, self.exchange_manager)
-#         self.running = False
-#         self.state_lock = threading.Lock()
-#         self.session_id = f"session_{int(time.time())}"
-#         self.start_time: float = 0.0
-#         self.last_portfolio_update: float = 0.0
-#         self.last_activity_time: float = 0.0
-#         self.trade_count: int = 0
-#         self.successful_trades: int = 0
-#         self.failed_trades: int = 0
-#         self.neutralized_trades: int = 0
-#         self.critical_failures: int = 0
-#         self.session_profit: float = 0.0
-#         self.logger.info(f"New bot instance created with Session ID: {self.session_id}")
+#     """
+#     Synchronous engine that runs its own loop on a background thread.
+#     GUI calls engine.start() / engine.stop() and receives updates via callbacks.
+#     """
 
+#     # ---- Public callbacks interface (all optional) ----
+#     # on_status(str)                  -> short human-readable status string
+#     # on_market_snapshot(dict)        -> latest market snapshot used by analyzer
+#     # on_opportunities(list[dict])    -> list of found opportunities (lightweight)
+#     # on_trade_started(dict)          -> trade/opportunity just kicked off
+#     # on_trade_update(dict)           -> progress updates from TradeExecutor
+#     # on_trade_finished(dict)         -> final outcome (filled/failed/canceled)
+#     # on_error(str)                   -> error message
 
-#     def _get_current_stats(self) -> Dict[str, Any]:
-#         return {
-#             'trades': self.trade_count, 'successful': self.successful_trades,
-#             'failed': self.failed_trades, 'neutralized': self.neutralized_trades,
-#             'critical': self.critical_failures, 'profit': self.session_profit
-#         }
+#     def __init__(
+#         self,
+#         exchange_manager: Any,
+#         analyzer: Any,
+#         risk_manager: Any,
+#         trade_executor: Any,
+#         *,
+#         config: Optional[Dict[str, Any]] = None,
+#         rebalancer: Optional[Any] = None,
+#         performance_analyzer: Optional[Any] = None,
+#         poll_interval_sec: float = 0.75,
+#         gui_callbacks: Optional[Dict[str, Callable[..., None]]] = None,
 
-#     def send_gui_update(self, update_type: str, data: Any):
-#         self.update_queue.put({"type": update_type, "data": data})
+#     ):
+#         self.log = get_logger(__name__)
+#         self.exchange_manager = exchange_manager
+#         self.analyzer = analyzer
+#         self.risk_manager = risk_manager
+#         self.trade_executor = trade_executor
+#         self.rebalancer = rebalancer
+#         self.performance_analyzer = performance_analyzer
 
-#     def _get_taker_fee(self, client: ccxt.Exchange, symbol: str) -> float:
-#         try:
-#             market = client.markets.get(symbol, {})
-#             return market.get('taker', self.config['trading_parameters']['fee_percent'] / 100)
-#         except (KeyError, AttributeError):
-#             return self.config['trading_parameters']['fee_percent'] / 100
+#         self.poll_interval_sec = max(0.05, float(poll_interval_sec))
+#         self._gui: Dict[str, Callable[..., None]] = gui_callbacks or {}
 
-#     def check_for_opportunity(self, prices: Dict, symbol: str, trade_size: float) -> Optional[Opportunity]:
-#         params = self.config['trading_parameters']
-#         best_opportunity = None
+#         self._thread: Optional[threading.Thread] = None
+#         self._stop_evt = threading.Event()
+#         self._state_lock = threading.RLock()
+#         self.state_lock = self._state_lock  
+#         self.config = config or {"trading_parameters": {}}
+#         self._running = False
 
-#         for buy_ex, sell_ex in itertools.permutations(self.exchange_manager.get_all_clients().keys(), 2):
-#             buy_price = prices.get(buy_ex, {}).get('ask')
-#             sell_price = prices.get(sell_ex, {}).get('bid')
-            
-#             if not all([buy_price, sell_price]): continue
+#         # Engine-level trade lock: prevents concurrent trade attempts.
+#         self._trade_lock = threading.RLock()
+#         self._last_status = "initialized"
 
-#             buy_client = self.exchange_manager.get_client(buy_ex)
-#             sell_client = self.exchange_manager.get_client(sell_ex)
-#             if not buy_client or not sell_client: continue
+#         # For lightweight health diagnostics
+#         self._loop_tick = 0
 
-#             buy_fee_rate = self._get_taker_fee(buy_client, symbol)
-#             sell_fee_rate = self._get_taker_fee(sell_client, symbol)
-#             amount = trade_size / buy_price
-            
-#             cost_of_buy = trade_size
-#             fee_on_buy = cost_of_buy * buy_fee_rate
-#             proceeds_from_sell = (amount * sell_price)
-#             fee_on_sell = proceeds_from_sell * sell_fee_rate
-#             net_profit = proceeds_from_sell - cost_of_buy - fee_on_buy - fee_on_sell
+#         self.log.info("SyncArbitrageEngine initialized (poll=%.2fs)", self.poll_interval_sec)
 
-#             if net_profit > params['min_profit_usd']:
-#                 current_opp = Opportunity(symbol, buy_ex, sell_ex, buy_price, sell_price, amount, net_profit)
-#                 if not best_opportunity or net_profit > best_opportunity.net_profit_usd:
-#                     best_opportunity = current_opp
-#         return best_opportunity
+#     # --------------- Public API ---------------
 
-#     def _get_full_portfolio(self, active_symbols: List[str]) -> Dict[str, Any]:
-#         full_portfolio = {"total_usd_value": 0.0, "assets": {}}
-#         assets_to_check = set(['USDT'])
-#         for symbol in active_symbols:
-#             assets_to_check.add(symbol.split('/')[0])
-#         for ex_name, client in self.exchange_manager.get_all_clients().items():
-#             balances = self.exchange_manager.get_balance(client, force_refresh=True)
-#             if balances:
-#                 for asset in assets_to_check:
-#                     if asset in balances['total'] and balances['total'][asset] > 0:
-#                         if asset not in full_portfolio["assets"]:
-#                             full_portfolio["assets"][asset] = {"balance": 0.0, "value_usd": 0.0}
-#                         full_portfolio["assets"][asset]["balance"] += balances['total'][asset]
-#         primary_client = next(iter(self.exchange_manager.get_all_clients().values()), None)
-#         if not primary_client: return full_portfolio
-#         for asset, data in full_portfolio["assets"].items():
-#             if asset == 'USDT':
-#                 data["value_usd"] = data["balance"]
-#             else:
-#                 try:
-#                     price = self.exchange_manager.get_market_price(primary_client, f"{asset}/USDT")
-#                     data["value_usd"] = (data["balance"] * price) if price else 0.0
-#                 except Exception:
-#                     data["value_usd"] = 0.0
-#             full_portfolio["total_usd_value"] += data["value_usd"]
-#         return full_portfolio
+#     def start(self) -> None:
+#         with self._state_lock:
+#             if self._running:
+#                 self.log.warning("Engine already running; ignoring start()")
+#                 return
+#             self._stop_evt.clear()
+#             self._running = True
+#             self._thread = threading.Thread(
+#                 target=self._run_loop,
+#                 name="arb-engine-loop",
+#                 daemon=True,
+#             )
+#             self._thread.start()
+#             self._emit("on_status", "engine_started")
+#             self.log.info("Engine started")
 
-#     def _take_and_send_initial_portfolio_snapshot(self, active_symbols: List[str]):
-#         """Takes and sends the initial portfolio snapshot to the GUI."""
-#         self.logger.info("Taking initial portfolio snapshot for performance analysis...")
-#         initial_portfolio = self._get_full_portfolio(active_symbols)
-#         self.send_gui_update('initial_portfolio', initial_portfolio)
-#         self.last_portfolio_update = time.time()
-#         return initial_portfolio
+#     def stop(self, join_timeout: float = 5.0) -> None:
+#         with self._state_lock:
+#             if not self._running:
+#                 self.log.warning("Engine not running; ignoring stop()")
+#                 return
 
-#     def _update_and_send_portfolio_state(self, active_symbols: List[str]) -> Dict[str, Any]:
-#         """Gets portfolio, sends GUI updates, and returns data for rebalancer."""
-#         current_portfolio = self._get_full_portfolio(active_symbols)
-#         balances_only = {}
-#         all_assets = set(current_portfolio.get("assets", {}).keys())
-#         for ex_name, client in self.exchange_manager.get_all_clients().items():
-#             balance_data = self.exchange_manager.get_balance(client, force_refresh=False)
-#             if balance_data:
-#                 balances_only[ex_name] = {k: v for k, v in balance_data.get('total', {}).items() if v > 0 and k in all_assets}
-        
-#         # Send a more complete update that the GUI expects
-#         if balances_only:
-#             payload = {"portfolio": current_portfolio, "balances": balances_only}
-#             self.send_gui_update('portfolio_update', payload)
+#             self._stop_evt.set()
+#             self._emit("on_status", "engine_stopping")
 
-#         self.last_portfolio_update = time.time()
-#         return current_portfolio
-
-#     def run(self, symbols_to_scan: Optional[List[str]] = None):
-#             self.running = True
-#             self.start_time = time.time()
-#             self.last_activity_time = self.start_time
-#             self.logger.info("Bot started. Scanning for opportunities...")
-#             symbols = symbols_to_scan if symbols_to_scan is not None else self.config['trading_parameters']['symbols_to_scan']
-            
-#             # --- THIS IS THE FIX ---
-#             # We now take the initial snapshot AND perform the initial state/balance update right at the start.
-#             self._take_and_send_initial_portfolio_snapshot(symbols)
-#             current_portfolio = self._update_and_send_portfolio_state(symbols)
-            
+#             # Ask executor to gracefully wind down
 #             try:
-#                 while self.running:
-#                     now = time.time()
-#                     rebalance_interval = self.config.get('rebalancing', {}).get('rebalance_interval_s', 3600)
-#                     if now - self.last_portfolio_update > rebalance_interval:
-#                         current_portfolio = self._update_and_send_portfolio_state(symbols)
-#                         if self.config.get('rebalancing', {}).get('enabled', False):
-#                             self.logger.info("Running periodic rebalancing check...")
-#                             self.rebalancer.run_rebalancing_check(current_portfolio)
+#                 if hasattr(self.trade_executor, "request_stop"):
+#                     self.trade_executor.request_stop()
+#             except Exception as e:
+#                 self.log.exception("TradeExecutor.request_stop failed: %s", e)
 
-#                     trade_size_usdt = self.config['trading_parameters']['trade_size_usdt']
-                    
-#                     for symbol in symbols:
-#                         if not self.running: break
-#                         try:
-#                             prices = self.exchange_manager.get_market_data(symbol, trade_size_usdt)
-#                             self.trade_logger.log_scan_data(symbol, prices)
-#                             opportunity = self.check_for_opportunity(prices, symbol, trade_size_usdt)
+#             t = self._thread
+#             self._thread = None
+#             self._running = False
 
-#                             market_data_payload = {'symbol': symbol, 'is_profitable': opportunity is not None}
-#                             all_bids = [p['bid'] for p in prices.values() if p.get('bid')]
-#                             all_asks = [p['ask'] for p in prices.values() if p.get('ask')]
-#                             best_bid = max(all_bids) if all_bids else 0
-#                             best_ask = min(all_asks) if all_asks else 0
-#                             spread_pct = ((best_bid - best_ask) / best_ask) * 100 if best_ask > 0 else 0
-#                             market_data_payload['spread_pct'] = spread_pct
-#                             for ex_name, price_data in prices.items():
-#                                 market_data_payload[f'{ex_name}_bid'] = price_data['bid']
-#                                 market_data_payload[f'{ex_name}_ask'] = price_data['ask']
-#                             self.send_gui_update('market_data', market_data_payload)
-                            
-#                             if opportunity:
-#                                 self.logger.info(f"Opportunity found for {symbol}! Est Profit: ${opportunity.net_profit_usd:.4f}")
-#                                 self.send_gui_update('opportunity_found', {'symbol': symbol, 'spread_pct': (opportunity.net_profit_usd / trade_size_usdt) * 100})
-                                
-#                                 if self.risk_manager.check_balances(opportunity, trade_size_usdt):
-#                                     with self.state_lock: self.trade_count += 1
-#                                     result = self.trade_executor.execute_and_monitor(opportunity, self.session_id)
-#                                     with self.state_lock:
-#                                         if result.get('status') == 'SUCCESS':
-#                                             self.successful_trades += 1
-#                                             self.session_profit += result.get('profit', 0.0)
-#                                             self.last_activity_time = time.time()
-#                                         else:
-#                                             self.failed_trades += 1
-#                                             if result.get('status') == 'CRITICAL_STUCK_ORDER':
-#                                                 self.critical_failures += 1
-#                                     self.send_gui_update('stats', self._get_current_stats())
-#                                     current_portfolio = self._update_and_send_portfolio_state(symbols)
-#                                     time.sleep(self.config['trading_parameters'].get('post_trade_delay_s', 5))
-#                         except Exception as e:
-#                             self.logger.error(f"CRITICAL UNHANDLED ERROR in symbol loop for {symbol}: {e}", exc_info_True)
-#                             self.send_gui_update('critical_error', f"A critical error occurred: {e}")
-#                             time.sleep(10)
-                    
-#                     now = time.time()
-#                     if now - self.last_activity_time > 15:
-#                         self.logger.info("Status: No profitable trades found recently. Still scanning markets...")
-#                         self.last_activity_time = now
-                    
-#                     time.sleep(self.config['trading_parameters']['scan_interval_s'])
+#         if t and t.is_alive():
+#             t.join(timeout=join_timeout)
+#             if t.is_alive():
+#                 self.log.warning("Engine loop did not stop within %.1fs", join_timeout)
+#         self._emit("on_status", "engine_stopped")
+#         self.log.info("Engine stopped")
+
+#     def is_running(self) -> bool:
+#         with self._state_lock:
+#             return self._running
+
+#     def get_status(self) -> str:
+#         return self._last_status
+
+#     # --------------- Internal loop ---------------
+
+#     def _run_loop(self) -> None:
+#         try:
+#             self._safe_emit_status("warming_up")
+
+#             # Optional: warm-up rebalancer or performance analyzer if present
+#             self._maybe_call(self.rebalancer, "on_engine_start")
+#             self._maybe_call(self.performance_analyzer, "on_engine_start")
+
+#             # Main loop
+#             while not self._stop_evt.is_set():
+#                 start_ts = time.perf_counter()
+#                 self._loop_tick += 1
+#                 try:
+#                     snapshot = self._fetch_market_snapshot()
+#                     if snapshot is not None:
+#                         self._emit("on_market_snapshot", snapshot)
+
+#                         # Analyze
+#                         opps = self._find_opportunities(snapshot)
+#                         if opps:
+#                             self._emit("on_opportunities", [self._opp_to_gui(o) for o in opps])
+
+#                             # Try to execute at most one opportunity at a time
+#                             self._try_execute_first_safe(opps)
+
+#                     # Optional: continuous portfolio maintenance
+#                     self._maybe_call(self.rebalancer, "maybe_rebalance")
+
+#                     # Optional: performance tracking
+#                     if self.performance_analyzer and hasattr(self.performance_analyzer, "tick"):
+#                         self.performance_analyzer.tick()
+
+#                     self._safe_emit_status("ok")
+
+#                 except Exception as loop_err:
+#                     err_txt = f"Engine loop error: {loop_err}"
+#                     self.log.exception(err_txt)
+#                     self._emit("on_error", err_txt)
+#                     self._safe_emit_status("error")
+
+#                 # pacing
+#                 elapsed = time.perf_counter() - start_ts
+#                 sleep_for = max(0.0, self.poll_interval_sec - elapsed)
+#                 time.sleep(sleep_for)
+
+#         except Exception as fatal:
+#             self.log.exception("Engine fatal error: %s", fatal)
+#             self._emit("on_error", f"Engine fatal error: {fatal}")
+#         finally:
+#             # Finalizers
+#             try:
+#                 self._maybe_call(self.rebalancer, "on_engine_stop")
+#                 self._maybe_call(self.performance_analyzer, "on_engine_stop")
+#             except Exception:
+#                 pass
+#             self._safe_emit_status("stopped")
+
+#     # --------------- Helpers ---------------
+
+#     def _fetch_market_snapshot(self) -> Optional[dict]:
+#         """
+#         Produces a lightweight snapshot for the analyzer. The engine is tolerant to
+#         different ExchangeManager APIs by trying common method names.
+#         Expected keys (best effort): prices, orderbooks, balances, timestamp
+#         """
+#         em = self.exchange_manager
+#         snapshot: dict = {"timestamp": time.time()}
+
+#         # prices
+#         prices = self._maybe_call(em, "get_prices")
+#         if prices is None:
+#             prices = self._maybe_call(em, "fetch_prices")
+#         if prices is None:
+#             prices = self._maybe_call(em, "fetch_tickers")
+#         snapshot["prices"] = prices
+
+#         # orderbooks (optional)
+#         orderbooks = self._maybe_call(em, "get_orderbooks")
+#         if orderbooks is None:
+#             orderbooks = self._maybe_call(em, "fetch_orderbooks")
+#         snapshot["orderbooks"] = orderbooks
+
+#         # balances (optional)
+#         balances = self._maybe_call(em, "get_balances")
+#         if balances is None:
+#             balances = self._maybe_call(em, "fetch_balances")
+#         snapshot["balances"] = balances
+
+#         return snapshot
+
+#     def _find_opportunities(self, snapshot: dict) -> List[Opportunity]:
+#         # Prefer an explicit analyzer method if it exists
+#         if hasattr(self.analyzer, "find_opportunities"):
+#             opps = self.analyzer.find_opportunities(snapshot)
+#         elif hasattr(self.analyzer, "analyze_opportunities"):
+#             opps = self.analyzer.analyze_opportunities(snapshot)
+#         else:
+#             # Last resort: call analyze(snapshot) expecting it returns list-like
+#             opps = self.analyzer.analyze(snapshot)  # type: ignore
+
+#         # Normalize: keep only list of Opportunity / dict-like
+#         result: List[Opportunity] = []
+#         if isinstance(opps, list):
+#             for o in opps:
+#                 if isinstance(o, Opportunity):
+#                     result.append(o)
+#                 else:
+#                     result.append(Opportunity(**o) if isinstance(o, dict) else Opportunity(value=o))
+#         return result
+
+#     def _try_execute_first_safe(self, opps: List[Opportunity]) -> None:
+#         # do not overlap trades
+#         if self._is_trade_in_progress():
+#             return
+
+#         best = self._pick_best(opps)
+#         if best is None:
+#             return
+
+#         # Risk checks
+#         try:
+#             approved = True
+#             if hasattr(self.risk_manager, "approve"):
+#                 approved = bool(self.risk_manager.approve(best))
+#             elif hasattr(self.risk_manager, "check"):
+#                 approved = bool(self.risk_manager.check(best))
+#             if not approved:
+#                 self.log.debug("Opportunity rejected by risk manager.")
+#                 return
+#         except Exception as e:
+#             self.log.exception("RiskManager error: %s", e)
+#             return
+
+#         # Execute within engine's background thread but protected by lock
+#         with self._trade_lock:
+#             self._emit("on_trade_started", self._opp_to_gui(best))
+#             self._safe_emit_status("trade_executing")
+
+#             try:
+#                 # Inform executor about GUI callback if it supports progress streaming
+#                 if hasattr(self.trade_executor, "set_progress_callback"):
+#                     self.trade_executor.set_progress_callback(
+#                         lambda msg: self._emit("on_trade_update", {"message": msg})
+#                     )
+
+#                 # Mark busy before call (if executor supports it)
+#                 if hasattr(self.trade_executor, "set_busy"):
+#                     self.trade_executor.set_busy(True)
+
+#                 # Execute synchronously (blocking) – engine thread is separate from GUI
+#                 if hasattr(self.trade_executor, "execute_and_monitor_opportunity"):
+#                     result = self.trade_executor.execute_and_monitor_opportunity(best)
+#                 elif hasattr(self.trade_executor, "execute_opportunity"):
+#                     result = self.trade_executor.execute_opportunity(best)
+#                 else:
+#                     raise RuntimeError("TradeExecutor lacks execute_* method")
+
+#                 payload = result if isinstance(result, dict) else {"result": result}
+#                 payload.setdefault("opportunity", self._opp_to_gui(best))
+#                 self._emit("on_trade_finished", payload)
+#                 self._safe_emit_status("ok")
+
+#             except Exception as exec_err:
+#                 self.log.exception("Trade execution failed: %s", exec_err)
+#                 self._emit("on_trade_finished", {
+#                     "status": "failed",
+#                     "error": str(exec_err),
+#                     "traceback": traceback.format_exc(),
+#                     "opportunity": self._opp_to_gui(best),
+#                 })
+#                 self._safe_emit_status("error")
+
 #             finally:
-#                 self.logger.info("Bot run loop finished. Cleaning up resources.")
-#                 self.exchange_manager.close_all_clients()
-#                 self.send_gui_update('stopped', {})
+#                 # Clear busy
+#                 try:
+#                     if hasattr(self.trade_executor, "set_busy"):
+#                         self.trade_executor.set_busy(False)
+#                 except Exception:
+#                     pass
 
-#     def stop(self):
-#             self.logger.info("Stop command received. Shutting down...")
-#             self.running = False 
-                
-#     # def run(self, symbols_to_scan: Optional[List[str]] = None):
-#     #     self.running = True
-#     #     self.start_time = time.time()
-#     #     self.last_activity_time = self.start_time
-#     #     self.logger.info("Bot started. Scanning for opportunities...")
-#     #     symbols = symbols_to_scan if symbols_to_scan is not None else self.config['trading_parameters']['symbols_to_scan']
-        
-#     #     # --- THIS IS THE FIX ---
-#     #     # Take the initial snapshot for the Analysis tab before the main loop starts
-#     #     current_portfolio = self._take_and_send_initial_portfolio_snapshot(symbols)
-        
-#     #     try:
-#     #         while self.running:
-#     #             now = time.time()
-#     #             rebalance_interval = self.config.get('rebalancing', {}).get('rebalance_interval_s', 3600)
-#     #             if now - self.last_portfolio_update > rebalance_interval:
-#     #                 current_portfolio = self._update_and_send_portfolio_state(symbols)
-#     #                 if self.config.get('rebalancing', {}).get('enabled', False):
-#     #                     self.logger.info("Running periodic rebalancing check...")
-#     #                     self.rebalancer.run_rebalancing_check(current_portfolio)
+#     def _is_trade_in_progress(self) -> bool:
+#         # If executor exposes busy flag, use it; else consult our lock
+#         try:
+#             if hasattr(self.trade_executor, "is_busy"):
+#                 return bool(self.trade_executor.is_busy())
+#         except Exception:
+#             pass
+#         # Non-blocking check of lock: if we can acquire+release, it's free
+#         locked = not self._trade_lock.acquire(blocking=False)
+#         if not locked:
+#             self._trade_lock.release()
+#         return locked
 
-#     #             trade_size_usdt = self.config['trading_parameters']['trade_size_usdt']
-                
-#     #             for symbol in symbols:
-#     #                 if not self.running: break
-#     #                 try:
-#     #                     prices = self.exchange_manager.get_market_data(symbol, trade_size_usdt)
-#     #                     self.trade_logger.log_scan_data(symbol, prices)
-#     #                     opportunity = self.check_for_opportunity(prices, symbol, trade_size_usdt)
+#     @staticmethod
+#     def _pick_best(opps: List[Opportunity]) -> Optional[Opportunity]:
+#         # Pick the highest expected profit opportunity if available
+#         if not opps:
+#             return None
+#         try:
+#             return max(opps, key=lambda o: getattr(o, "expected_profit", getattr(o, "profit", 0.0)))
+#         except Exception:
+#             return opps[0]
 
-#     #                     market_data_payload = {'symbol': symbol, 'is_profitable': opportunity is not None}
-#     #                     all_bids = [p['bid'] for p in prices.values() if p.get('bid')]
-#     #                     all_asks = [p['ask'] for p in prices.values() if p.get('ask')]
-#     #                     best_bid = max(all_bids) if all_bids else 0
-#     #                     best_ask = min(all_asks) if all_asks else 0
-#     #                     spread_pct = ((best_bid - best_ask) / best_ask) * 100 if best_ask > 0 else 0
-#     #                     market_data_payload['spread_pct'] = spread_pct
-#     #                     for ex_name, price_data in prices.items():
-#     #                         market_data_payload[f'{ex_name}_bid'] = price_data['bid']
-#     #                         market_data_payload[f'{ex_name}_ask'] = price_data['ask']
-#     #                     self.send_gui_update('market_data', market_data_payload)
-                        
-#     #                     if opportunity:
-#     #                         self.logger.info(f"Opportunity found for {symbol}! Est Profit: ${opportunity.net_profit_usd:.4f}")
-#     #                         self.send_gui_update('opportunity_found', {'symbol': symbol, 'spread_pct': (opportunity.net_profit_usd / trade_size_usdt) * 100})
-                            
-#     #                         if self.risk_manager.check_balances(opportunity, trade_size_usdt):
-#     #                             with self.state_lock: self.trade_count += 1
-#     #                             result = self.trade_executor.execute_and_monitor(opportunity, self.session_id)
-#     #                             with self.state_lock:
-#     #                                 if result.get('status') == 'SUCCESS':
-#     #                                     self.successful_trades += 1
-#     #                                     self.session_profit += result.get('profit', 0.0)
-#     #                                     self.last_activity_time = time.time()
-#     #                                 else:
-#     #                                     self.failed_trades += 1
-#     #                                     if result.get('status') == 'CRITICAL_STUCK_ORDER':
-#     #                                         self.critical_failures += 1
-#     #                             self.send_gui_update('stats', self._get_current_stats())
-#     #                             current_portfolio = self._update_and_send_portfolio_state(symbols)
-#     #                             time.sleep(self.config['trading_parameters'].get('post_trade_delay_s', 5))
-#     #                 except Exception as e:
-#     #                     self.logger.error(f"CRITICAL UNHANDLED ERROR in symbol loop for {symbol}: {e}", exc_info_True)
-#     #                     self.send_gui_update('critical_error', f"A critical error occurred: {e}")
-#     #                     time.sleep(10)
-                
-#     #             now = time.time()
-#     #             if now - self.last_activity_time > 15:
-#     #                 self.logger.info("Status: No profitable trades found recently. Still scanning markets...")
-#     #                 self.last_activity_time = now
-                
-#     #             time.sleep(self.config['trading_parameters']['scan_interval_s'])
-#     #     finally:
-#     #         self.logger.info("Bot run loop finished. Cleaning up resources.")
-#     #         self.exchange_manager.close_all_clients()
-#     #         self.send_gui_update('stopped', {})
+#     def _opp_to_gui(self, o: Opportunity) -> dict:
+#         # Make a lightweight, JSON-serializable dict for GUI updates
+#         d = dict(vars(o))
+#         # Avoid dumping heavy objects (orderbooks, raw snapshots etc.)
+#         for k in list(d.keys()):
+#             if k in ("raw", "orderbook_a", "orderbook_b", "snapshot"):
+#                 d[k] = "<omitted>"
+#         return d
 
-#     # def stop(self):
-#     #     self.logger.info("Stop command received. Shutting down...")
-#     #     self.running = False
+#     # --------------- Generic utilities ---------------
+
+#     def _maybe_call(self, obj: Any, method: str, *args, **kwargs):
+#         if obj is None:
+#             return None
+#         fn = getattr(obj, method, None)
+#         if callable(fn):
+#             return fn(*args, **kwargs)
+#         return None
+
+#     def _emit(self, name: str, *args, **kwargs) -> None:
+#         cb = self._gui.get(name)
+#         if cb is None:
+#             return
+#         try:
+#             cb(*args, **kwargs)
+#         except Exception as e:
+#             # never break the loop because of GUI callback errors
+#             self.log.exception("GUI callback %s error: %s", name, e)
+
+#     def _safe_emit_status(self, status: str) -> None:
+#         self._last_status = status
+#         self._emit("on_status", status)

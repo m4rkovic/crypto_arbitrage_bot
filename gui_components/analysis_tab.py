@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-from performance_analyzer import PerformanceAnalyzer
+from core.performance_analyzer import PerformanceAnalyzer
 
 class AnalysisTab(ctk.CTkFrame):
     """

@@ -1,0 +1,344 @@
+2025-10-20 20:55:17,667 - CRITICAL - [main:70] - An unexpected fatal error occurred: '_tkinter.tkapp' object has no attribute 'on_engine_status'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\main.py", line 63, in <module>
+    app = App(config, EXCHANGES)
+  File "D:\Dev\py\crypto_arbitrage_bot\gui_components\gui_application.py", line 65, in __init__
+    "on_status": self.on_engine_status,
+                 ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Aleksa\AppData\Local\Programs\Python\Python313\Lib\tkinter\__init__.py", line 2552, in __getattr__
+    return getattr(self.tk, attr)
+AttributeError: '_tkinter.tkapp' object has no attribute 'on_engine_status'
+2025-10-20 20:58:57,574 - INFO - [bot_engine:84] - SyncArbitrageEngine initialized (poll=0.75s)
+2025-10-20 20:58:57,574 - CRITICAL - [main:70] - An unexpected fatal error occurred: ArbitrageBot.__init__() missing 1 required positional argument: 'trade_executor'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\main.py", line 63, in <module>
+    app = App(config, EXCHANGES)
+  File "D:\Dev\py\crypto_arbitrage_bot\gui_components\gui_application.py", line 77, in __init__
+    self.bot = ArbitrageBot(config, exchanges_config, self.update_queue)
+               ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: ArbitrageBot.__init__() missing 1 required positional argument: 'trade_executor'
+2025-10-20 21:01:08,379 - INFO - [bot_engine:84] - SyncArbitrageEngine initialized (poll=0.75s)
+2025-10-20 21:05:03,194 - INFO - [bot_engine:85] - SyncArbitrageEngine initialized (poll=0.75s)
+2025-10-20 21:07:13,104 - CRITICAL - [main:70] - An unexpected fatal error occurred: ArbitrageBot.__init__() got an unexpected keyword argument 'config'
+Traceback (most recent call last):
+  File "D:\Dev\py\crypto_arbitrage_bot\main.py", line 63, in <module>
+    app = App(config, EXCHANGES)
+  File "D:\Dev\py\crypto_arbitrage_bot\gui_components\gui_application.py", line 61, in __init__
+    self.engine = ArbitrageBot(
+                  ~~~~~~~~~~~~^
+        exchange_manager=self.exchange_manager,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<13 lines>...
+        config=self.config
+        ^^^^^^^^^^^^^^^^^^
+    )
+    ^
+TypeError: ArbitrageBot.__init__() got an unexpected keyword argument 'config'
+2025-10-20 21:10:16,352 - INFO - [bot_engine:87] - SyncArbitrageEngine initialized (poll=0.75s)
+2025-10-20 21:10:33,206 - INFO - [gui_application:192] - --- Starting New Session ---
+2025-10-20 21:10:33,207 - INFO - [gui_application:193] - Mode: LIVE TRADING
+2025-10-20 21:10:33,207 - INFO - [gui_application:196] - Sizing Mode: FIXED @ $60.00
+2025-10-20 21:10:33,207 - INFO - [gui_application:202] - Symbols: ETH/USDT
+2025-10-20 21:10:53,541 - WARNING - [bot_engine:110] - Engine not running; ignoring stop()
+2025-10-20 21:10:53,575 - INFO - [gui_application:243] - Bot shutdown complete.
+2025-10-20 21:11:00,459 - INFO - [gui_application:192] - --- Starting New Session ---
+2025-10-20 21:11:00,460 - INFO - [gui_application:193] - Mode: LIVE TRADING
+2025-10-20 21:11:00,460 - INFO - [gui_application:196] - Sizing Mode: FIXED @ $6000.00
+2025-10-20 21:11:00,461 - INFO - [gui_application:202] - Symbols: ETH/USDT
+2025-10-20 21:12:13,185 - INFO - [bot_engine:88] - SyncArbitrageEngine initialized (poll=0.75s)
+2025-10-20 21:16:18,877 - INFO - [logging_config:98] - Logging initialized -> human log: D:\Dev\py\crypto_arbitrage_bot\logs\bot.log | json log: D:\Dev\py\crypto_arbitrage_bot\logs\bot_structured.log
+2025-10-20 21:16:21,079 - INFO - [exchange_manager:31] - Initialized Okx client.
+2025-10-20 21:16:23,327 - INFO - [exchange_manager:31] - Initialized Binance client.
+2025-10-20 21:16:28,491 - INFO - [exchange_manager:31] - Initialized Bybit client.
+2025-10-20 21:16:28,492 - INFO - [bot_engine:90] - SyncArbitrageEngine initialized (poll=0.75s)
+2025-10-20 21:16:32,415 - INFO - [gui_application:192] - --- Starting New Session ---
+2025-10-20 21:16:32,415 - INFO - [gui_application:193] - Mode: DRY RUN (SIMULATION)
+2025-10-20 21:16:32,416 - INFO - [gui_application:196] - Sizing Mode: FIXED @ $20.00
+2025-10-20 21:16:32,416 - INFO - [gui_application:202] - Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT, BNB/USDT, LINK/USDT, DOGE/USDT, SHIB/USDT
+2025-10-20 21:16:41,310 - WARNING - [bot_engine:127] - Engine not running; ignoring stop()
+2025-10-20 21:16:41,344 - INFO - [gui_application:243] - Bot shutdown complete.
+2025-10-20 21:16:50,897 - INFO - [gui_application:192] - --- Starting New Session ---
+2025-10-20 21:16:50,898 - INFO - [gui_application:193] - Mode: LIVE TRADING
+2025-10-20 21:16:50,898 - INFO - [gui_application:196] - Sizing Mode: FIXED @ $5000.00
+2025-10-20 21:16:50,898 - INFO - [gui_application:202] - Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT
+2025-10-20 21:20:20,045 - INFO - [logging_config:98] - Logging initialized -> human log: D:\Dev\py\crypto_arbitrage_bot\logs\bot.log | json log: D:\Dev\py\crypto_arbitrage_bot\logs\bot_structured.log
+2025-10-20 21:20:22,083 - INFO - [exchange_manager:31] - Initialized Okx client.
+2025-10-20 21:20:25,406 - INFO - [exchange_manager:31] - Initialized Binance client.
+2025-10-20 21:20:31,885 - INFO - [exchange_manager:31] - Initialized Bybit client.
+2025-10-20 21:20:31,885 - INFO - [bot_engine:90] - SyncArbitrageEngine initialized (poll=0.75s)
+2025-10-20 21:20:37,765 - INFO - [gui_application:192] - --- Starting New Session ---
+2025-10-20 21:20:37,766 - INFO - [gui_application:193] - Mode: DRY RUN (SIMULATION)
+2025-10-20 21:20:37,766 - INFO - [gui_application:196] - Sizing Mode: FIXED @ $20.00
+2025-10-20 21:20:37,767 - INFO - [gui_application:202] - Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT, BNB/USDT, LINK/USDT
+2025-10-20 21:20:37,808 - INFO - [gui_application:96] - [ENGINE STATUS] engine_started
+2025-10-20 21:20:37,838 - INFO - [gui_application:96] - [ENGINE STATUS] warming_up
+2025-10-20 21:20:37,844 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:20:38,594 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:20:39,344 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:20:40,095 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:20:40,845 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:20:41,595 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:20:42,346 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:20:43,096 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:20:43,847 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:20:44,597 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:20:45,348 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:20:46,098 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:20:46,849 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:20:47,599 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:20:48,350 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:20:49,101 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:20:49,852 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:20:50,025 - INFO - [gui_application:96] - [ENGINE STATUS] engine_stopping
+2025-10-20 21:20:50,026 - INFO - [trade_executor:230] - [Trade] received stop signal
+2025-10-20 21:20:50,026 - INFO - [bot_engine:146] - Engine stopped
+2025-10-20 21:20:50,026 - INFO - [gui_application:237] - Waiting for bot thread to terminate...
+2025-10-20 21:20:50,603 - INFO - [gui_application:96] - [ENGINE STATUS] stopped
+2025-10-20 21:21:00,065 - INFO - [gui_application:243] - Bot shutdown complete.
+2025-10-20 21:21:00,084 - INFO - [gui_application:96] - [ENGINE STATUS] engine_stopped
+2025-10-20 21:21:22,259 - INFO - [gui_application:192] - --- Starting New Session ---
+2025-10-20 21:21:22,260 - INFO - [gui_application:193] - Mode: LIVE TRADING
+2025-10-20 21:21:22,260 - INFO - [gui_application:196] - Sizing Mode: FIXED @ $1520.00
+2025-10-20 21:21:22,261 - INFO - [gui_application:202] - Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT, BNB/USDT, LINK/USDT
+2025-10-20 21:21:22,300 - INFO - [gui_application:96] - [ENGINE STATUS] engine_started
+2025-10-20 21:21:22,336 - INFO - [gui_application:96] - [ENGINE STATUS] warming_up
+2025-10-20 21:21:22,341 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:21:23,092 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:21:23,842 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:21:24,592 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:21:25,342 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:21:26,092 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:21:26,842 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:21:27,592 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:21:28,342 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:21:28,644 - INFO - [gui_application:96] - [ENGINE STATUS] engine_stopping
+2025-10-20 21:21:28,645 - INFO - [trade_executor:230] - [Trade] received stop signal
+2025-10-20 21:21:28,645 - INFO - [bot_engine:146] - Engine stopped
+2025-10-20 21:21:28,646 - INFO - [gui_application:237] - Waiting for bot thread to terminate...
+2025-10-20 21:21:29,093 - INFO - [gui_application:96] - [ENGINE STATUS] stopped
+2025-10-20 21:21:38,690 - INFO - [gui_application:243] - Bot shutdown complete.
+2025-10-20 21:21:38,709 - INFO - [gui_application:96] - [ENGINE STATUS] engine_stopped
+2025-10-20 21:25:06,033 - INFO - [logging_config:98] - Logging initialized -> human log: D:\Dev\py\crypto_arbitrage_bot\logs\bot.log | json log: D:\Dev\py\crypto_arbitrage_bot\logs\bot_structured.log
+2025-10-20 21:25:08,184 - INFO - [exchange_manager:31] - Initialized Okx client.
+2025-10-20 21:25:10,842 - INFO - [exchange_manager:31] - Initialized Binance client.
+2025-10-20 21:25:16,947 - INFO - [exchange_manager:31] - Initialized Bybit client.
+2025-10-20 21:25:16,947 - INFO - [bot_engine:90] - SyncArbitrageEngine initialized (poll=0.75s)
+2025-10-20 21:25:24,447 - INFO - [gui_application:192] - --- Starting New Session ---
+2025-10-20 21:25:24,447 - INFO - [gui_application:193] - Mode: LIVE TRADING
+2025-10-20 21:25:24,447 - INFO - [gui_application:196] - Sizing Mode: FIXED @ $50.00
+2025-10-20 21:25:24,447 - INFO - [gui_application:202] - Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT, BNB/USDT, LINK/USDT, DOGE/USDT, SHIB/USDT
+2025-10-20 21:25:24,483 - INFO - [gui_application:96] - [ENGINE STATUS] engine_started
+2025-10-20 21:25:24,515 - INFO - [gui_application:96] - [ENGINE STATUS] warming_up
+2025-10-20 21:25:24,522 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:25:25,272 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:25:26,022 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:25:26,773 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:25:27,523 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:25:28,274 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:25:29,025 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:25:29,775 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:25:30,525 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:25:31,276 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:25:32,026 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:25:32,777 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:25:33,528 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:25:33,920 - INFO - [gui_application:96] - [ENGINE STATUS] engine_stopping
+2025-10-20 21:25:33,920 - INFO - [trade_executor:230] - [Trade] received stop signal
+2025-10-20 21:25:33,921 - INFO - [bot_engine:146] - Engine stopped
+2025-10-20 21:25:33,921 - INFO - [gui_application:237] - Waiting for bot thread to terminate...
+2025-10-20 21:25:34,279 - INFO - [gui_application:96] - [ENGINE STATUS] stopped
+2025-10-20 21:25:43,968 - INFO - [gui_application:243] - Bot shutdown complete.
+2025-10-20 21:25:43,984 - INFO - [gui_application:96] - [ENGINE STATUS] engine_stopped
+2025-10-20 21:26:09,687 - INFO - [logging_config:98] - Logging initialized -> human log: D:\Dev\py\crypto_arbitrage_bot\logs\bot.log | json log: D:\Dev\py\crypto_arbitrage_bot\logs\bot_structured.log
+2025-10-20 21:26:11,880 - INFO - [exchange_manager:31] - Initialized Okx client.
+2025-10-20 21:26:14,097 - INFO - [exchange_manager:31] - Initialized Binance client.
+2025-10-20 21:26:19,629 - INFO - [exchange_manager:31] - Initialized Bybit client.
+2025-10-20 21:26:19,629 - INFO - [bot_engine:90] - SyncArbitrageEngine initialized (poll=0.75s)
+2025-10-20 21:26:27,035 - INFO - [gui_application:192] - --- Starting New Session ---
+2025-10-20 21:26:27,035 - INFO - [gui_application:193] - Mode: LIVE TRADING
+2025-10-20 21:26:27,036 - INFO - [gui_application:196] - Sizing Mode: FIXED @ $600.00
+2025-10-20 21:26:27,036 - INFO - [gui_application:202] - Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT, BNB/USDT, LINK/USDT, DOGE/USDT, SHIB/USDT
+2025-10-20 21:26:27,071 - INFO - [gui_application:96] - [ENGINE STATUS] engine_started
+2025-10-20 21:26:27,103 - INFO - [gui_application:96] - [ENGINE STATUS] warming_up
+2025-10-20 21:26:27,110 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:27,861 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:28,611 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:29,362 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:30,112 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:30,863 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:31,614 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:32,364 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:33,115 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:33,865 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:34,616 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:35,366 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:36,116 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:36,867 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:37,617 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:38,368 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:39,118 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:39,868 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:40,619 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:41,370 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:42,120 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:42,871 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:43,622 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:44,372 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:45,122 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:45,873 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:46,624 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:47,374 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:48,125 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:48,875 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:49,626 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:50,376 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:51,126 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:51,877 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:52,627 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:53,378 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:54,129 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:54,879 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:26:55,287 - INFO - [gui_application:96] - [ENGINE STATUS] engine_stopping
+2025-10-20 21:26:55,288 - INFO - [trade_executor:230] - [Trade] received stop signal
+2025-10-20 21:26:55,289 - INFO - [bot_engine:146] - Engine stopped
+2025-10-20 21:26:55,289 - INFO - [gui_application:237] - Waiting for bot thread to terminate...
+2025-10-20 21:26:55,629 - INFO - [gui_application:96] - [ENGINE STATUS] stopped
+2025-10-20 21:27:05,322 - INFO - [gui_application:243] - Bot shutdown complete.
+2025-10-20 21:27:05,395 - INFO - [gui_application:96] - [ENGINE STATUS] engine_stopped
+2025-10-20 21:31:36,406 - INFO - [logging_config:98] - Logging initialized -> human log: D:\Dev\py\crypto_arbitrage_bot\logs\bot.log | json log: D:\Dev\py\crypto_arbitrage_bot\logs\bot_structured.log
+2025-10-20 21:31:38,528 - INFO - [exchange_manager:31] - Initialized Okx client.
+2025-10-20 21:31:41,254 - INFO - [exchange_manager:31] - Initialized Binance client.
+2025-10-20 21:31:46,671 - INFO - [exchange_manager:31] - Initialized Bybit client.
+2025-10-20 21:31:46,671 - INFO - [bot_engine:90] - SyncArbitrageEngine initialized (poll=0.75s)
+2025-10-20 21:31:54,052 - INFO - [gui_application:207] - --- Starting New Session ---
+2025-10-20 21:31:54,052 - INFO - [gui_application:208] - Mode: LIVE TRADING
+2025-10-20 21:31:54,052 - INFO - [gui_application:211] - Sizing Mode: FIXED @ $600.00
+2025-10-20 21:31:54,053 - INFO - [gui_application:217] - Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT, BNB/USDT, LINK/USDT, DOGE/USDT, SHIB/USDT
+2025-10-20 21:31:54,086 - INFO - [gui_application:96] - [ENGINE STATUS] engine_started
+2025-10-20 21:31:54,114 - INFO - [gui_application:96] - [ENGINE STATUS] warming_up
+2025-10-20 21:31:54,120 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:31:54,870 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:31:55,621 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:31:56,371 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:31:57,122 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:31:57,873 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:31:58,624 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:31:59,375 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:00,125 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:00,876 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:01,626 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:02,376 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:03,127 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:03,878 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:04,628 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:05,379 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:06,129 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:06,880 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:07,630 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:08,381 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:09,131 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:09,881 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:10,632 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:11,383 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:12,133 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:12,883 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:13,634 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:14,384 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:15,135 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:15,886 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:16,637 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:17,388 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:18,139 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:18,889 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:19,640 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:20,390 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:21,141 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:21,891 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:22,641 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:23,392 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:24,143 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:24,894 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:25,645 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:26,396 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:27,147 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:27,898 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:28,648 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:29,399 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:30,150 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:30,900 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:31,651 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:32,401 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:33,151 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:33,902 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:34,653 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:35,404 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:36,155 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:36,906 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:37,657 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:38,408 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:39,159 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:32:39,708 - INFO - [gui_application:96] - [ENGINE STATUS] engine_stopping
+2025-10-20 21:32:39,709 - INFO - [trade_executor:230] - [Trade] received stop signal
+2025-10-20 21:32:39,710 - INFO - [bot_engine:146] - Engine stopped
+2025-10-20 21:32:39,710 - INFO - [gui_application:252] - Waiting for bot thread to terminate...
+2025-10-20 21:32:39,910 - INFO - [gui_application:96] - [ENGINE STATUS] stopped
+2025-10-20 21:32:49,876 - INFO - [gui_application:96] - [ENGINE STATUS] engine_stopped
+2025-10-20 21:36:20,432 - INFO - [logging_config:98] - Logging initialized -> human log: D:\Dev\py\crypto_arbitrage_bot\logs\bot.log | json log: D:\Dev\py\crypto_arbitrage_bot\logs\bot_structured.log
+2025-10-20 21:36:22,562 - INFO - [exchange_manager:31] - Initialized Okx client.
+2025-10-20 21:36:25,448 - INFO - [exchange_manager:31] - Initialized Binance client.
+2025-10-20 21:36:31,147 - INFO - [exchange_manager:31] - Initialized Bybit client.
+2025-10-20 21:36:31,147 - INFO - [bot_engine:90] - SyncArbitrageEngine initialized (poll=0.75s)
+2025-10-20 21:36:44,159 - INFO - [gui_application:207] - --- Starting New Session ---
+2025-10-20 21:36:44,159 - INFO - [gui_application:208] - Mode: LIVE TRADING
+2025-10-20 21:36:44,160 - INFO - [gui_application:211] - Sizing Mode: FIXED @ $600.00
+2025-10-20 21:36:44,160 - INFO - [gui_application:217] - Symbols: ETH/USDT
+2025-10-20 21:36:44,203 - INFO - [gui_application:96] - [ENGINE STATUS] engine_started
+2025-10-20 21:36:47,156 - INFO - [gui_application:96] - [ENGINE STATUS] warming_up
+2025-10-20 21:36:47,161 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:36:47,912 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:36:48,662 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:36:49,412 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:36:53,150 - INFO - [exchange_manager:103] -   Fetching order book for ETH/USDT on OKX...
+2025-10-20 21:36:53,390 - INFO - [exchange_manager:106] -   ...Success for OKX.
+2025-10-20 21:36:53,391 - INFO - [exchange_manager:103] -   Fetching order book for ETH/USDT on BINANCE...
+2025-10-20 21:36:53,650 - INFO - [exchange_manager:106] -   ...Success for BINANCE.
+2025-10-20 21:36:53,650 - INFO - [exchange_manager:103] -   Fetching order book for ETH/USDT on BYBIT...
+2025-10-20 21:36:53,846 - INFO - [exchange_manager:106] -   ...Success for BYBIT.
+2025-10-20 21:36:53,871 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:37:04,688 - INFO - [exchange_manager:103] -   Fetching order book for ETH/USDT on OKX...
+2025-10-20 21:37:05,029 - INFO - [exchange_manager:106] -   ...Success for OKX.
+2025-10-20 21:37:05,029 - INFO - [exchange_manager:103] -   Fetching order book for ETH/USDT on BINANCE...
+2025-10-20 21:37:05,290 - INFO - [exchange_manager:106] -   ...Success for BINANCE.
+2025-10-20 21:37:05,290 - INFO - [exchange_manager:103] -   Fetching order book for ETH/USDT on BYBIT...
+2025-10-20 21:37:05,481 - INFO - [exchange_manager:106] -   ...Success for BYBIT.
+2025-10-20 21:37:09,929 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:37:10,680 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:37:11,430 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:37:15,703 - INFO - [exchange_manager:103] -   Fetching order book for ETH/USDT on OKX...
+2025-10-20 21:37:16,027 - INFO - [exchange_manager:106] -   ...Success for OKX.
+2025-10-20 21:37:16,027 - INFO - [exchange_manager:103] -   Fetching order book for ETH/USDT on BINANCE...
+2025-10-20 21:37:16,282 - INFO - [exchange_manager:106] -   ...Success for BINANCE.
+2025-10-20 21:37:16,282 - INFO - [exchange_manager:103] -   Fetching order book for ETH/USDT on BYBIT...
+2025-10-20 21:37:16,474 - INFO - [exchange_manager:106] -   ...Success for BYBIT.
+2025-10-20 21:37:21,016 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:37:21,767 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:37:22,517 - INFO - [gui_application:96] - [ENGINE STATUS] ok
+2025-10-20 21:37:27,035 - INFO - [exchange_manager:103] -   Fetching order book for ETH/USDT on OKX...
+2025-10-20 21:37:27,387 - INFO - [exchange_manager:106] -   ...Success for OKX.
+2025-10-20 21:37:27,387 - INFO - [exchange_manager:103] -   Fetching order book for ETH/USDT on BINANCE...
+2025-10-20 21:37:27,645 - INFO - [exchange_manager:106] -   ...Success for BINANCE.
+2025-10-20 21:37:27,645 - INFO - [exchange_manager:103] -   Fetching order book for ETH/USDT on BYBIT...
+2025-10-20 21:37:27,838 - INFO - [exchange_manager:106] -   ...Success for BYBIT.
+2025-10-20 21:37:32,245 - INFO - [gui_application:96] - [ENGINE STATUS] engine_stopping
+2025-10-20 21:37:32,246 - INFO - [trade_executor:230] - [Trade] received stop signal
+2025-10-20 21:37:32,246 - INFO - [bot_engine:146] - Engine stopped
+2025-10-20 21:37:32,246 - INFO - [gui_application:254] - Waiting for bot thread to terminate...
+2025-10-20 21:37:42,282 - INFO - [gui_application:260] - Bot shutdown complete.
+2025-10-20 21:37:46,931 - INFO - [exchange_manager:103] -   Fetching order book for ETH/USDT on OKX...
+2025-10-20 21:37:47,174 - INFO - [exchange_manager:106] -   ...Success for OKX.
+2025-10-20 21:37:47,174 - INFO - [exchange_manager:103] -   Fetching order book for ETH/USDT on BINANCE...
+2025-10-20 21:37:47,431 - INFO - [exchange_manager:106] -   ...Success for BINANCE.
+2025-10-20 21:37:47,431 - INFO - [exchange_manager:103] -   Fetching order book for ETH/USDT on BYBIT...
+2025-10-20 21:37:47,951 - INFO - [exchange_manager:106] -   ...Success for BYBIT.
+2025-10-20 21:37:48,065 - INFO - [gui_application:96] - [ENGINE STATUS] stopped
+2025-10-20 21:37:48,078 - INFO - [gui_application:96] - [ENGINE STATUS] engine_stopped

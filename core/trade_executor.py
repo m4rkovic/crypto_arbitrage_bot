@@ -1,155 +1,230 @@
-# trade_executor.py
-
-import ccxt
+# core/trade_executor.py
+from __future__ import annotations
 import time
-import logging
-from typing import Any, Dict, Optional
+import threading
+from typing import Any, Optional, Callable, Dict
 
-from data_models import Opportunity, TradeLogData
-from exchange_manager import ExchangeManager
-from utils import retry_ccxt_call
-from trade_logger import TradeLogger
+from config.logging_config import get_logger
+
 
 class TradeExecutor:
     """
-    Handles the entire lifecycle of an arbitrage trade:
-    placement, monitoring, and handling of stuck orders. This class is stateless.
+    Synchronous trade executor with graceful stop support.
+
+    Responsibilities:
+    - Place & monitor orders (blocking methods).
+    - Expose `execute_and_monitor_opportunity(opportunity)` for engine.
+    - Provide busy flag and request_stop() for lifecycle coordination.
+    - Stream progress via an optional callback.
     """
-    def __init__(self, config: Dict[str, Any], exchange_manager: ExchangeManager, trade_logger: TradeLogger):
-        self.config = config
-        self.trading_params = config.get('trading_parameters', {})
+
+    def __init__(self, exchange_manager: Any):
+        self.log = get_logger(__name__)
         self.exchange_manager = exchange_manager
-        self.trade_logger = trade_logger
-        self.logger = logging.getLogger(__name__)
+        self._busy = False
+        self._stop_evt = threading.Event()
+        self._progress_cb: Optional[Callable[[str], None]] = None
 
-    def execute_and_monitor(self, opportunity: Opportunity, session_id: str) -> Dict[str, Any]:
-        buy_client = self.exchange_manager.get_client(opportunity.buy_exchange)
-        sell_client = self.exchange_manager.get_client(opportunity.sell_exchange)
-        if not buy_client or not sell_client:
-            self.logger.error("Could not get exchange clients for trade execution.")
-            return {'status': 'FAILED_CLIENT_ERROR', 'profit': 0.0}
+    # -------- Lifecycle --------
 
-        buy_order, sell_order = self._place_orders(opportunity)
-        if not buy_order or not sell_order:
-            self.logger.error(f"Order placement failed for {opportunity.symbol}. Trade not executed.")
-            return {'status': 'FAILED_PLACEMENT', 'profit': 0.0}
+    def set_progress_callback(self, cb: Optional[Callable[[str], None]]) -> None:
+        self._progress_cb = cb
 
-        monitor_result = self._monitor_orders(buy_order, sell_order, buy_client, sell_client, opportunity)
-        log_entry = self._create_log_entry(opportunity, session_id, monitor_result)
+    def request_stop(self) -> None:
+        """Ask long-running monitor loops to wind down ASAP."""
+        self._stop_evt.set()
+        self._emit("received stop signal")
 
-        if monitor_result.get("success"):
-            log_entry.status = 'SUCCESS'
-            self.trade_logger.log_trade(log_entry)
-            return {'status': 'SUCCESS', 'profit': log_entry.net_profit_usd}
-        else:
-            self.logger.warning("Monitoring failed or timed out. Handling stuck order scenario.")
-            final_status = self._handle_stuck_order(buy_order, sell_order, log_entry)
-            log_entry.status = final_status
-            self.trade_logger.log_trade(log_entry)
-            return {'status': final_status, 'profit': 0.0}
+    def reset_stop(self) -> None:
+        self._stop_evt.clear()
 
-    def _place_orders(self, opportunity: Opportunity) -> tuple[Optional[Dict], Optional[Dict]]:
-        symbol, base, amount = opportunity.symbol, opportunity.symbol.split('/')[0], opportunity.amount
-        log_msg = (
-            f"⚡ Arbitrage on {symbol}! Est. Profit: ${opportunity.net_profit_usd:.4f}\n"
-            f"  ➡️ BUY {amount:.6f} {base} on {opportunity.buy_exchange.upper()} @ {opportunity.buy_price}\n"
-            f"  ⬅️ SELL {amount:.6f} {base} on {opportunity.sell_exchange.upper()} @ {opportunity.sell_price}"
-        )
+    def is_stopping(self) -> bool:
+        return self._stop_evt.is_set()
 
-        if self.trading_params.get('dry_run', True):
-            self.logger.trade(f"DRY RUN: {log_msg}")
-            return {"id": f"dry_buy_{int(time.time())}"}, {"id": f"dry_sell_{int(time.time())}"}
-        
+    def set_busy(self, value: bool) -> None:
+        self._busy = bool(value)
+
+    def is_busy(self) -> bool:
+        return self._busy
+
+    # -------- Public trading API --------
+
+    def execute_and_monitor_opportunity(self, opportunity: Any) -> Dict[str, Any]:
+        """
+        Main entry for the engine. Synchronous & blocking.
+        Expects `opportunity` to carry all fields required for pair of legs.
+        """
+        self.reset_stop()
+        self.set_busy(True)
         try:
-            self.logger.trade(log_msg)
-            buy_client = self.exchange_manager.get_client(opportunity.buy_exchange)
-            sell_client = self.exchange_manager.get_client(opportunity.sell_exchange)
-            buy_order = retry_ccxt_call(buy_client.create_limit_buy_order)(symbol, amount, opportunity.buy_price)
-            sell_order = retry_ccxt_call(sell_client.create_limit_sell_order)(symbol, amount, opportunity.sell_price)
-            return buy_order, sell_order
+            self._emit(f"Executing opportunity: {getattr(opportunity, 'id', '<no-id>')}")
+            # 1) Prepare legs (buy on A, sell on B) or vice versa
+            legs = self._build_legs(opportunity)
+
+            # 2) Place first leg
+            leg1_res = self._place_and_wait(legs[0])
+
+            # Optional early exit if stopping requested
+            if self.is_stopping():
+                self._emit("Stopping after leg1 due to stop request")
+                return {"status": "stopped", "leg1": leg1_res}
+
+            # 3) Place second leg (hedge/exit)
+            leg2_res = self._place_and_wait(legs[1])
+
+            # 4) Post-trade checks / PnL calc
+            pnl = self._compute_pnl(opportunity, leg1_res, leg2_res)
+            self._emit(f"Trade completed. PnL={pnl:.4f}")
+
+            return {
+                "status": "filled",
+                "pnl": pnl,
+                "leg1": leg1_res,
+                "leg2": leg2_res,
+            }
+
         except Exception as e:
-            self.logger.error(f"An unexpected error occurred during order placement for {symbol}: {e}", exc_info=True)
-            return None, None
+            self.log.exception("Trade execution error: %s", e)
+            return {"status": "failed", "error": str(e)}
+        finally:
+            self.set_busy(False)
 
-    def _monitor_orders(self, buy_order: Dict, sell_order: Dict, buy_client: ccxt.Exchange, sell_client: ccxt.Exchange, opportunity: Opportunity) -> Dict[str, Any]:
-        if self.trading_params.get('dry_run', True):
-            time.sleep(1)
-            self.logger.success("DRY RUN: Both orders simulated as filled.")
-            return {"success": True, "latency_ms": 1000, "fees_paid": 0.02, "fill_ratio": 1.0}
-            
-        time.sleep(1.5)
-        start_time = time.time()
-        timeout = self.trading_params.get('order_monitor_timeout_s', 45)
-        symbol = opportunity.symbol
-        
-        while time.time() - start_time < timeout:
+    # -------- Internals (adapt to your EM / CCXT specifics) --------
+
+    def _build_legs(self, opportunity: Any):
+        """
+        Translate an opportunity into two executable legs.
+        This method is intentionally simple and should be adapted to your data model.
+        Expected opportunity fields (examples):
+          - buy_exchange, sell_exchange
+          - symbol, amount
+          - buy_price, sell_price
+          - order_type ('market'/'limit'), etc.
+        """
+        symbol = getattr(opportunity, "symbol", "BTC/USDT")
+        amount = float(getattr(opportunity, "amount", 0.001))
+        order_type = getattr(opportunity, "order_type", "market")
+
+        buy_ex = getattr(opportunity, "buy_exchange", None)
+        sell_ex = getattr(opportunity, "sell_exchange", None)
+        buy_price = getattr(opportunity, "buy_price", None)
+        sell_price = getattr(opportunity, "sell_price", None)
+
+        leg_buy = {
+            "side": "buy",
+            "exchange": buy_ex,
+            "symbol": symbol,
+            "amount": amount,
+            "type": order_type,
+            "price": buy_price,
+        }
+        leg_sell = {
+            "side": "sell",
+            "exchange": sell_ex,
+            "symbol": symbol,
+            "amount": amount,
+            "type": order_type,
+            "price": sell_price,
+        }
+        return (leg_buy, leg_sell)
+
+    def _place_and_wait(self, leg: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Places an order using ExchangeManager and waits until it is filled (or stop requested).
+        This is synchronous and should call your existing EM methods (duck-typed).
+        """
+        ex_id = leg["exchange"]
+        symbol = leg["symbol"]
+        side = leg["side"]
+        amount = float(leg["amount"])
+        otype = leg.get("type", "market")
+        price = leg.get("price")
+
+        if not ex_id:
+            raise ValueError("Missing exchange id for leg")
+
+        self._emit(f"Placing {otype} {side} {amount} {symbol} on {ex_id} (price={price})")
+
+        # ---- Place order (support different EM method names) ----
+        order = None
+        em = self.exchange_manager
+        if hasattr(em, "place_order"):
+            order = em.place_order(ex_id, symbol, side, amount, price=price, order_type=otype)
+        elif hasattr(em, "create_order"):
+            order = em.create_order(ex_id, symbol, side, amount, price=price, order_type=otype)
+        else:
+            raise RuntimeError("ExchangeManager lacks place/create order API")
+
+        order_id = order.get("id") if isinstance(order, dict) else getattr(order, "id", None)
+        self._emit(f"Order placed: {order_id}")
+
+        # ---- Monitor until filled/canceled/stop ----
+        t0 = time.time()
+        last_status = None
+        while not self.is_stopping():
+            status = self._fetch_order_status(ex_id, symbol, order_id)
+            if status != last_status:
+                last_status = status
+                self._emit(f"Order {order_id} status: {status}")
+
+            if status in ("closed", "filled", "canceled", "rejected"):
+                break
+            time.sleep(0.5)
+
+        if self.is_stopping() and status not in ("closed", "filled"):
+            self._emit(f"Cancel due to stop: {order_id}")
             try:
-                buy_open_orders = retry_ccxt_call(buy_client.fetch_open_orders)(symbol)
-                sell_open_orders = retry_ccxt_call(sell_client.fetch_open_orders)(symbol)
-                buy_open_ids = {o['id'] for o in buy_open_orders}
-                sell_open_ids = {o['id'] for o in sell_open_orders}
-                is_buy_open = buy_order['id'] in buy_open_ids
-                is_sell_open = sell_order['id'] in sell_open_ids
-
-                if not is_buy_open and not is_sell_open:
-                    self.logger.success("Both orders are no longer open, assuming filled.")
-                    
-                    final_buy_order, final_sell_order = None, None
-                    try:
-                        final_buy_order = retry_ccxt_call(buy_client.fetch_order)(buy_order['id'], symbol)
-                    except Exception as e:
-                        self.logger.warning(f"Could not fetch final buy order details from {buy_client.id}. Falling back to estimates. Error: {e}")
-                    try:
-                        final_sell_order = retry_ccxt_call(sell_client.fetch_order)(sell_order['id'], symbol)
-                    except Exception as e:
-                        self.logger.warning(f"Could not fetch final sell order details from {sell_client.id}. Falling back to estimates. Error: {e}")
-
-                    latency = int((time.time() - start_time) * 1000)
-                    
-                    # --- NEW ROBUST PARSING LOGIC ---
-                    buy_fee, sell_fee, fill_ratio = 0.0, 0.0, 1.0
-                    
-                    if final_buy_order:
-                        buy_fee = (final_buy_order.get('fee') or {}).get('cost', 0.0)
-                        filled = final_buy_order.get('filled', 0.0)
-                        amount = final_buy_order.get('amount', 1.0)
-                        if filled and amount:
-                            fill_ratio = filled / amount
-                    else: # Fallback to estimation
-                        buy_fee = opportunity.buy_price * opportunity.amount * 0.001
-
-                    if final_sell_order:
-                        sell_fee = (final_sell_order.get('fee') or {}).get('cost', 0.0)
-                    else: # Fallback to estimation
-                        sell_fee = opportunity.sell_price * opportunity.amount * 0.001
-
-                    fees = (buy_fee or 0.0) + (sell_fee or 0.0)
-                    # ------------------------------------
-                    
-                    return {"success": True, "latency_ms": latency, "fees_paid": fees, "fill_ratio": fill_ratio}
-
-                time.sleep(2.5)
+                self._cancel_order(ex_id, symbol, order_id)
             except Exception as e:
-                self.logger.warning(f"Error monitoring orders: {e}. Retrying...")
-                time.sleep(2.5)
-                
-        self.logger.error(f"Timeout reached while monitoring orders for {symbol}.")
-        return {"success": False, "latency_ms": int(timeout * 1000), "fees_paid": 0, "fill_ratio": 0}
+                self.log.warning("Cancel failed for %s: %s", order_id, e)
 
-    def _handle_stuck_order(self, buy_order: Dict, sell_order: Dict, log_data: TradeLogData) -> str:
-        self.logger.critical(f"STUCK ORDER DETECTED for {log_data.symbol}. Manual intervention may be required.")
-        self.logger.critical(f"  Buy Order ID: {buy_order['id']} on {log_data.buy_exchange}")
-        self.logger.critical(f"  Sell Order ID: {sell_order['id']} on {log_data.sell_exchange}")
-        return 'CRITICAL_STUCK_ORDER'
+        filled = status in ("closed", "filled")
+        elapsed = time.time() - t0
+        return {
+            "order_id": order_id,
+            "exchange": ex_id,
+            "symbol": symbol,
+            "side": side,
+            "status": status,
+            "elapsed_sec": elapsed,
+        }
 
-    def _create_log_entry(self, opportunity: Opportunity, session_id: str, monitor_result: Dict) -> TradeLogData:
-        return TradeLogData(
-            session_id=session_id, timestamp=int(time.time()),
-            symbol=opportunity.symbol, buy_exchange=opportunity.buy_exchange,
-            sell_exchange=opportunity.sell_exchange, buy_price=opportunity.buy_price,
-            sell_price=opportunity.sell_price, amount=opportunity.amount,
-            net_profit_usd=opportunity.net_profit_usd, status='PENDING',
-            latency_ms=monitor_result.get('latency_ms', 0),
-            fees_paid=monitor_result.get('fees_paid', 0),
-            fill_ratio=monitor_result.get('fill_ratio', 0)
-        )
+    def _fetch_order_status(self, exchange_id: str, symbol: str, order_id: str) -> str:
+        em = self.exchange_manager
+        if hasattr(em, "fetch_order_status"):
+            return str(em.fetch_order_status(exchange_id, symbol, order_id))
+        if hasattr(em, "get_order_status"):
+            return str(em.get_order_status(exchange_id, symbol, order_id))
+        # Generic fallback (some EMs return full order)
+        if hasattr(em, "fetch_order"):
+            data = em.fetch_order(exchange_id, symbol, order_id)
+            if isinstance(data, dict):
+                return str(data.get("status", "unknown"))
+        return "unknown"
+
+    def _cancel_order(self, exchange_id: str, symbol: str, order_id: str) -> None:
+        em = self.exchange_manager
+        if hasattr(em, "cancel_order"):
+            em.cancel_order(exchange_id, symbol, order_id)
+        elif hasattr(em, "cancel"):
+            em.cancel(exchange_id, symbol, order_id)
+        else:
+            self.log.warning("No cancel method on ExchangeManager for %s", order_id)
+
+    # -------- Utility --------
+
+    def _compute_pnl(self, opportunity: Any, leg1: Dict[str, Any], leg2: Dict[str, Any]) -> float:
+        """
+        Placeholder PnL calculation. Replace with your real fees/slippage logic.
+        """
+        # If your analyzer already computed expected_profit, you can use it here as a proxy
+        expected = float(getattr(opportunity, "expected_profit", getattr(opportunity, "profit", 0.0)))
+        return expected
+
+    def _emit(self, msg: str) -> None:
+        if self._progress_cb:
+            try:
+                self._progress_cb(msg)
+            except Exception:
+                self.log.exception("Progress callback failed")
+        self.log.info("[Trade] %s", msg)

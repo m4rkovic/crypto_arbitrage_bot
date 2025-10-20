@@ -1,5 +1,6 @@
 # utils.py
 
+import os
 import yaml
 import ccxt
 import logging
@@ -49,7 +50,10 @@ def validate_config(config):
             
     return True
 
-def load_config(filepath='config.yaml'):
+def load_config(filepath: str = None):
+    if filepath is None:
+        base_dir = os.path.dirname(os.path.dirname(__file__))  # project root
+        filepath = os.path.join(base_dir, "config", "config.yaml")
     """Loads and validates the configuration file."""
     try:
         with open(filepath, 'r') as f:

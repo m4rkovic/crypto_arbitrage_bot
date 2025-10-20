@@ -1,0 +1,321 @@
+{"timestamp": "2025-10-20 20:55:17,633", "level": "INFO", "message": "Logging initialized \u2192 human log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot.log | json log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot_structured.log", "module": "logging_config", "funcName": "setup_logging", "lineNo": 98}
+{"timestamp": "2025-10-20 20:55:17,667", "level": "CRITICAL", "message": "An unexpected fatal error occurred: '_tkinter.tkapp' object has no attribute 'on_engine_status'", "module": "main", "funcName": "<module>", "lineNo": 70, "exc_info": "Traceback (most recent call last):\n  File \"D:\\Dev\\py\\crypto_arbitrage_bot\\main.py\", line 63, in <module>\n    app = App(config, EXCHANGES)\n  File \"D:\\Dev\\py\\crypto_arbitrage_bot\\gui_components\\gui_application.py\", line 65, in __init__\n    \"on_status\": self.on_engine_status,\n                 ^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\Aleksa\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\tkinter\\__init__.py\", line 2552, in __getattr__\n    return getattr(self.tk, attr)\nAttributeError: '_tkinter.tkapp' object has no attribute 'on_engine_status'"}
+{"timestamp": "2025-10-20 20:58:57,569", "level": "INFO", "message": "Logging initialized \u2192 human log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot.log | json log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot_structured.log", "module": "logging_config", "funcName": "setup_logging", "lineNo": 98}
+{"timestamp": "2025-10-20 20:58:57,574", "level": "INFO", "message": "SyncArbitrageEngine initialized (poll=0.75s)", "module": "bot_engine", "funcName": "__init__", "lineNo": 84}
+{"timestamp": "2025-10-20 20:58:57,574", "level": "CRITICAL", "message": "An unexpected fatal error occurred: ArbitrageBot.__init__() missing 1 required positional argument: 'trade_executor'", "module": "main", "funcName": "<module>", "lineNo": 70, "exc_info": "Traceback (most recent call last):\n  File \"D:\\Dev\\py\\crypto_arbitrage_bot\\main.py\", line 63, in <module>\n    app = App(config, EXCHANGES)\n  File \"D:\\Dev\\py\\crypto_arbitrage_bot\\gui_components\\gui_application.py\", line 77, in __init__\n    self.bot = ArbitrageBot(config, exchanges_config, self.update_queue)\n               ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: ArbitrageBot.__init__() missing 1 required positional argument: 'trade_executor'"}
+{"timestamp": "2025-10-20 21:01:08,374", "level": "INFO", "message": "Logging initialized \u2192 human log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot.log | json log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot_structured.log", "module": "logging_config", "funcName": "setup_logging", "lineNo": 98}
+{"timestamp": "2025-10-20 21:01:08,379", "level": "INFO", "message": "SyncArbitrageEngine initialized (poll=0.75s)", "module": "bot_engine", "funcName": "__init__", "lineNo": 84}
+{"timestamp": "2025-10-20 21:05:03,189", "level": "INFO", "message": "Logging initialized \u2192 human log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot.log | json log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot_structured.log", "module": "logging_config", "funcName": "setup_logging", "lineNo": 98}
+{"timestamp": "2025-10-20 21:05:03,194", "level": "INFO", "message": "SyncArbitrageEngine initialized (poll=0.75s)", "module": "bot_engine", "funcName": "__init__", "lineNo": 85}
+{"timestamp": "2025-10-20 21:07:13,099", "level": "INFO", "message": "Logging initialized \u2192 human log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot.log | json log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot_structured.log", "module": "logging_config", "funcName": "setup_logging", "lineNo": 98}
+{"timestamp": "2025-10-20 21:07:13,104", "level": "CRITICAL", "message": "An unexpected fatal error occurred: ArbitrageBot.__init__() got an unexpected keyword argument 'config'", "module": "main", "funcName": "<module>", "lineNo": 70, "exc_info": "Traceback (most recent call last):\n  File \"D:\\Dev\\py\\crypto_arbitrage_bot\\main.py\", line 63, in <module>\n    app = App(config, EXCHANGES)\n  File \"D:\\Dev\\py\\crypto_arbitrage_bot\\gui_components\\gui_application.py\", line 61, in __init__\n    self.engine = ArbitrageBot(\n                  ~~~~~~~~~~~~^\n        exchange_manager=self.exchange_manager,\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    ...<13 lines>...\n        config=self.config\n        ^^^^^^^^^^^^^^^^^^\n    )\n    ^\nTypeError: ArbitrageBot.__init__() got an unexpected keyword argument 'config'"}
+{"timestamp": "2025-10-20 21:10:16,347", "level": "INFO", "message": "Logging initialized \u2192 human log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot.log | json log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot_structured.log", "module": "logging_config", "funcName": "setup_logging", "lineNo": 98}
+{"timestamp": "2025-10-20 21:10:16,352", "level": "INFO", "message": "SyncArbitrageEngine initialized (poll=0.75s)", "module": "bot_engine", "funcName": "__init__", "lineNo": 87}
+{"timestamp": "2025-10-20 21:10:33,206", "level": "INFO", "message": "--- Starting New Session ---", "module": "gui_application", "funcName": "start_bot", "lineNo": 192}
+{"timestamp": "2025-10-20 21:10:33,207", "level": "INFO", "message": "Mode: LIVE TRADING", "module": "gui_application", "funcName": "start_bot", "lineNo": 193}
+{"timestamp": "2025-10-20 21:10:33,207", "level": "INFO", "message": "Sizing Mode: FIXED @ $60.00", "module": "gui_application", "funcName": "start_bot", "lineNo": 196}
+{"timestamp": "2025-10-20 21:10:33,207", "level": "INFO", "message": "Symbols: ETH/USDT", "module": "gui_application", "funcName": "start_bot", "lineNo": 202}
+{"timestamp": "2025-10-20 21:10:53,541", "level": "WARNING", "message": "Engine not running; ignoring stop()", "module": "bot_engine", "funcName": "stop", "lineNo": 110}
+{"timestamp": "2025-10-20 21:10:53,575", "level": "INFO", "message": "Bot shutdown complete.", "module": "gui_application", "funcName": "stop_bot", "lineNo": 243}
+{"timestamp": "2025-10-20 21:11:00,459", "level": "INFO", "message": "--- Starting New Session ---", "module": "gui_application", "funcName": "start_bot", "lineNo": 192}
+{"timestamp": "2025-10-20 21:11:00,460", "level": "INFO", "message": "Mode: LIVE TRADING", "module": "gui_application", "funcName": "start_bot", "lineNo": 193}
+{"timestamp": "2025-10-20 21:11:00,460", "level": "INFO", "message": "Sizing Mode: FIXED @ $6000.00", "module": "gui_application", "funcName": "start_bot", "lineNo": 196}
+{"timestamp": "2025-10-20 21:11:00,461", "level": "INFO", "message": "Symbols: ETH/USDT", "module": "gui_application", "funcName": "start_bot", "lineNo": 202}
+{"timestamp": "2025-10-20 21:12:13,180", "level": "INFO", "message": "Logging initialized \u2192 human log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot.log | json log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot_structured.log", "module": "logging_config", "funcName": "setup_logging", "lineNo": 98}
+{"timestamp": "2025-10-20 21:12:13,185", "level": "INFO", "message": "SyncArbitrageEngine initialized (poll=0.75s)", "module": "bot_engine", "funcName": "__init__", "lineNo": 88}
+{"timestamp": "2025-10-20 21:16:18,877", "level": "INFO", "message": "Logging initialized -> human log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot.log | json log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot_structured.log", "module": "logging_config", "funcName": "setup_logging", "lineNo": 98}
+{"timestamp": "2025-10-20 21:16:21,079", "level": "INFO", "message": "Initialized Okx client.", "module": "exchange_manager", "funcName": "_initialize_clients", "lineNo": 31}
+{"timestamp": "2025-10-20 21:16:23,327", "level": "INFO", "message": "Initialized Binance client.", "module": "exchange_manager", "funcName": "_initialize_clients", "lineNo": 31}
+{"timestamp": "2025-10-20 21:16:28,491", "level": "INFO", "message": "Initialized Bybit client.", "module": "exchange_manager", "funcName": "_initialize_clients", "lineNo": 31}
+{"timestamp": "2025-10-20 21:16:28,492", "level": "INFO", "message": "SyncArbitrageEngine initialized (poll=0.75s)", "module": "bot_engine", "funcName": "__init__", "lineNo": 90}
+{"timestamp": "2025-10-20 21:16:32,415", "level": "INFO", "message": "--- Starting New Session ---", "module": "gui_application", "funcName": "start_bot", "lineNo": 192}
+{"timestamp": "2025-10-20 21:16:32,415", "level": "INFO", "message": "Mode: DRY RUN (SIMULATION)", "module": "gui_application", "funcName": "start_bot", "lineNo": 193}
+{"timestamp": "2025-10-20 21:16:32,416", "level": "INFO", "message": "Sizing Mode: FIXED @ $20.00", "module": "gui_application", "funcName": "start_bot", "lineNo": 196}
+{"timestamp": "2025-10-20 21:16:32,416", "level": "INFO", "message": "Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT, BNB/USDT, LINK/USDT, DOGE/USDT, SHIB/USDT", "module": "gui_application", "funcName": "start_bot", "lineNo": 202}
+{"timestamp": "2025-10-20 21:16:41,310", "level": "WARNING", "message": "Engine not running; ignoring stop()", "module": "bot_engine", "funcName": "stop", "lineNo": 127}
+{"timestamp": "2025-10-20 21:16:41,344", "level": "INFO", "message": "Bot shutdown complete.", "module": "gui_application", "funcName": "stop_bot", "lineNo": 243}
+{"timestamp": "2025-10-20 21:16:50,897", "level": "INFO", "message": "--- Starting New Session ---", "module": "gui_application", "funcName": "start_bot", "lineNo": 192}
+{"timestamp": "2025-10-20 21:16:50,898", "level": "INFO", "message": "Mode: LIVE TRADING", "module": "gui_application", "funcName": "start_bot", "lineNo": 193}
+{"timestamp": "2025-10-20 21:16:50,898", "level": "INFO", "message": "Sizing Mode: FIXED @ $5000.00", "module": "gui_application", "funcName": "start_bot", "lineNo": 196}
+{"timestamp": "2025-10-20 21:16:50,898", "level": "INFO", "message": "Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT", "module": "gui_application", "funcName": "start_bot", "lineNo": 202}
+{"timestamp": "2025-10-20 21:20:20,045", "level": "INFO", "message": "Logging initialized -> human log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot.log | json log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot_structured.log", "module": "logging_config", "funcName": "setup_logging", "lineNo": 98}
+{"timestamp": "2025-10-20 21:20:22,083", "level": "INFO", "message": "Initialized Okx client.", "module": "exchange_manager", "funcName": "_initialize_clients", "lineNo": 31}
+{"timestamp": "2025-10-20 21:20:25,406", "level": "INFO", "message": "Initialized Binance client.", "module": "exchange_manager", "funcName": "_initialize_clients", "lineNo": 31}
+{"timestamp": "2025-10-20 21:20:31,885", "level": "INFO", "message": "Initialized Bybit client.", "module": "exchange_manager", "funcName": "_initialize_clients", "lineNo": 31}
+{"timestamp": "2025-10-20 21:20:31,885", "level": "INFO", "message": "SyncArbitrageEngine initialized (poll=0.75s)", "module": "bot_engine", "funcName": "__init__", "lineNo": 90}
+{"timestamp": "2025-10-20 21:20:37,765", "level": "INFO", "message": "--- Starting New Session ---", "module": "gui_application", "funcName": "start_bot", "lineNo": 192}
+{"timestamp": "2025-10-20 21:20:37,766", "level": "INFO", "message": "Mode: DRY RUN (SIMULATION)", "module": "gui_application", "funcName": "start_bot", "lineNo": 193}
+{"timestamp": "2025-10-20 21:20:37,766", "level": "INFO", "message": "Sizing Mode: FIXED @ $20.00", "module": "gui_application", "funcName": "start_bot", "lineNo": 196}
+{"timestamp": "2025-10-20 21:20:37,767", "level": "INFO", "message": "Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT, BNB/USDT, LINK/USDT", "module": "gui_application", "funcName": "start_bot", "lineNo": 202}
+{"timestamp": "2025-10-20 21:20:37,808", "level": "INFO", "message": "[ENGINE STATUS] engine_started", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:20:37,838", "level": "INFO", "message": "[ENGINE STATUS] warming_up", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:20:37,844", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:20:38,594", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:20:39,344", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:20:40,095", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:20:40,845", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:20:41,595", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:20:42,346", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:20:43,096", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:20:43,847", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:20:44,597", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:20:45,348", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:20:46,098", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:20:46,849", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:20:47,599", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:20:48,350", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:20:49,101", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:20:49,852", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:20:50,025", "level": "INFO", "message": "[ENGINE STATUS] engine_stopping", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:20:50,026", "level": "INFO", "message": "[Trade] received stop signal", "module": "trade_executor", "funcName": "_emit", "lineNo": 230}
+{"timestamp": "2025-10-20 21:20:50,026", "level": "INFO", "message": "Engine stopped", "module": "bot_engine", "funcName": "stop", "lineNo": 146}
+{"timestamp": "2025-10-20 21:20:50,026", "level": "INFO", "message": "Waiting for bot thread to terminate...", "module": "gui_application", "funcName": "stop_bot", "lineNo": 237}
+{"timestamp": "2025-10-20 21:20:50,603", "level": "INFO", "message": "[ENGINE STATUS] stopped", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:21:00,065", "level": "INFO", "message": "Bot shutdown complete.", "module": "gui_application", "funcName": "stop_bot", "lineNo": 243}
+{"timestamp": "2025-10-20 21:21:00,084", "level": "INFO", "message": "[ENGINE STATUS] engine_stopped", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:21:22,259", "level": "INFO", "message": "--- Starting New Session ---", "module": "gui_application", "funcName": "start_bot", "lineNo": 192}
+{"timestamp": "2025-10-20 21:21:22,260", "level": "INFO", "message": "Mode: LIVE TRADING", "module": "gui_application", "funcName": "start_bot", "lineNo": 193}
+{"timestamp": "2025-10-20 21:21:22,260", "level": "INFO", "message": "Sizing Mode: FIXED @ $1520.00", "module": "gui_application", "funcName": "start_bot", "lineNo": 196}
+{"timestamp": "2025-10-20 21:21:22,261", "level": "INFO", "message": "Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT, BNB/USDT, LINK/USDT", "module": "gui_application", "funcName": "start_bot", "lineNo": 202}
+{"timestamp": "2025-10-20 21:21:22,300", "level": "INFO", "message": "[ENGINE STATUS] engine_started", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:21:22,336", "level": "INFO", "message": "[ENGINE STATUS] warming_up", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:21:22,341", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:21:23,092", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:21:23,842", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:21:24,592", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:21:25,342", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:21:26,092", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:21:26,842", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:21:27,592", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:21:28,342", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:21:28,644", "level": "INFO", "message": "[ENGINE STATUS] engine_stopping", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:21:28,645", "level": "INFO", "message": "[Trade] received stop signal", "module": "trade_executor", "funcName": "_emit", "lineNo": 230}
+{"timestamp": "2025-10-20 21:21:28,645", "level": "INFO", "message": "Engine stopped", "module": "bot_engine", "funcName": "stop", "lineNo": 146}
+{"timestamp": "2025-10-20 21:21:28,646", "level": "INFO", "message": "Waiting for bot thread to terminate...", "module": "gui_application", "funcName": "stop_bot", "lineNo": 237}
+{"timestamp": "2025-10-20 21:21:29,093", "level": "INFO", "message": "[ENGINE STATUS] stopped", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:21:38,690", "level": "INFO", "message": "Bot shutdown complete.", "module": "gui_application", "funcName": "stop_bot", "lineNo": 243}
+{"timestamp": "2025-10-20 21:21:38,709", "level": "INFO", "message": "[ENGINE STATUS] engine_stopped", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:25:06,033", "level": "INFO", "message": "Logging initialized -> human log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot.log | json log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot_structured.log", "module": "logging_config", "funcName": "setup_logging", "lineNo": 98}
+{"timestamp": "2025-10-20 21:25:08,184", "level": "INFO", "message": "Initialized Okx client.", "module": "exchange_manager", "funcName": "_initialize_clients", "lineNo": 31}
+{"timestamp": "2025-10-20 21:25:10,842", "level": "INFO", "message": "Initialized Binance client.", "module": "exchange_manager", "funcName": "_initialize_clients", "lineNo": 31}
+{"timestamp": "2025-10-20 21:25:16,947", "level": "INFO", "message": "Initialized Bybit client.", "module": "exchange_manager", "funcName": "_initialize_clients", "lineNo": 31}
+{"timestamp": "2025-10-20 21:25:16,947", "level": "INFO", "message": "SyncArbitrageEngine initialized (poll=0.75s)", "module": "bot_engine", "funcName": "__init__", "lineNo": 90}
+{"timestamp": "2025-10-20 21:25:24,447", "level": "INFO", "message": "--- Starting New Session ---", "module": "gui_application", "funcName": "start_bot", "lineNo": 192}
+{"timestamp": "2025-10-20 21:25:24,447", "level": "INFO", "message": "Mode: LIVE TRADING", "module": "gui_application", "funcName": "start_bot", "lineNo": 193}
+{"timestamp": "2025-10-20 21:25:24,447", "level": "INFO", "message": "Sizing Mode: FIXED @ $50.00", "module": "gui_application", "funcName": "start_bot", "lineNo": 196}
+{"timestamp": "2025-10-20 21:25:24,447", "level": "INFO", "message": "Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT, BNB/USDT, LINK/USDT, DOGE/USDT, SHIB/USDT", "module": "gui_application", "funcName": "start_bot", "lineNo": 202}
+{"timestamp": "2025-10-20 21:25:24,483", "level": "INFO", "message": "[ENGINE STATUS] engine_started", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:25:24,515", "level": "INFO", "message": "[ENGINE STATUS] warming_up", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:25:24,522", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:25:25,272", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:25:26,022", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:25:26,773", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:25:27,523", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:25:28,274", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:25:29,025", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:25:29,775", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:25:30,525", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:25:31,276", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:25:32,026", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:25:32,777", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:25:33,528", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:25:33,920", "level": "INFO", "message": "[ENGINE STATUS] engine_stopping", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:25:33,920", "level": "INFO", "message": "[Trade] received stop signal", "module": "trade_executor", "funcName": "_emit", "lineNo": 230}
+{"timestamp": "2025-10-20 21:25:33,921", "level": "INFO", "message": "Engine stopped", "module": "bot_engine", "funcName": "stop", "lineNo": 146}
+{"timestamp": "2025-10-20 21:25:33,921", "level": "INFO", "message": "Waiting for bot thread to terminate...", "module": "gui_application", "funcName": "stop_bot", "lineNo": 237}
+{"timestamp": "2025-10-20 21:25:34,279", "level": "INFO", "message": "[ENGINE STATUS] stopped", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:25:43,968", "level": "INFO", "message": "Bot shutdown complete.", "module": "gui_application", "funcName": "stop_bot", "lineNo": 243}
+{"timestamp": "2025-10-20 21:25:43,984", "level": "INFO", "message": "[ENGINE STATUS] engine_stopped", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:09,687", "level": "INFO", "message": "Logging initialized -> human log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot.log | json log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot_structured.log", "module": "logging_config", "funcName": "setup_logging", "lineNo": 98}
+{"timestamp": "2025-10-20 21:26:11,880", "level": "INFO", "message": "Initialized Okx client.", "module": "exchange_manager", "funcName": "_initialize_clients", "lineNo": 31}
+{"timestamp": "2025-10-20 21:26:14,097", "level": "INFO", "message": "Initialized Binance client.", "module": "exchange_manager", "funcName": "_initialize_clients", "lineNo": 31}
+{"timestamp": "2025-10-20 21:26:19,629", "level": "INFO", "message": "Initialized Bybit client.", "module": "exchange_manager", "funcName": "_initialize_clients", "lineNo": 31}
+{"timestamp": "2025-10-20 21:26:19,629", "level": "INFO", "message": "SyncArbitrageEngine initialized (poll=0.75s)", "module": "bot_engine", "funcName": "__init__", "lineNo": 90}
+{"timestamp": "2025-10-20 21:26:27,035", "level": "INFO", "message": "--- Starting New Session ---", "module": "gui_application", "funcName": "start_bot", "lineNo": 192}
+{"timestamp": "2025-10-20 21:26:27,035", "level": "INFO", "message": "Mode: LIVE TRADING", "module": "gui_application", "funcName": "start_bot", "lineNo": 193}
+{"timestamp": "2025-10-20 21:26:27,036", "level": "INFO", "message": "Sizing Mode: FIXED @ $600.00", "module": "gui_application", "funcName": "start_bot", "lineNo": 196}
+{"timestamp": "2025-10-20 21:26:27,036", "level": "INFO", "message": "Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT, BNB/USDT, LINK/USDT, DOGE/USDT, SHIB/USDT", "module": "gui_application", "funcName": "start_bot", "lineNo": 202}
+{"timestamp": "2025-10-20 21:26:27,071", "level": "INFO", "message": "[ENGINE STATUS] engine_started", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:27,103", "level": "INFO", "message": "[ENGINE STATUS] warming_up", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:27,110", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:27,861", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:28,611", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:29,362", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:30,112", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:30,863", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:31,614", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:32,364", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:33,115", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:33,865", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:34,616", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:35,366", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:36,116", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:36,867", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:37,617", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:38,368", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:39,118", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:39,868", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:40,619", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:41,370", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:42,120", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:42,871", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:43,622", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:44,372", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:45,122", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:45,873", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:46,624", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:47,374", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:48,125", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:48,875", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:49,626", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:50,376", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:51,126", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:51,877", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:52,627", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:53,378", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:54,129", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:54,879", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:55,287", "level": "INFO", "message": "[ENGINE STATUS] engine_stopping", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:26:55,288", "level": "INFO", "message": "[Trade] received stop signal", "module": "trade_executor", "funcName": "_emit", "lineNo": 230}
+{"timestamp": "2025-10-20 21:26:55,289", "level": "INFO", "message": "Engine stopped", "module": "bot_engine", "funcName": "stop", "lineNo": 146}
+{"timestamp": "2025-10-20 21:26:55,289", "level": "INFO", "message": "Waiting for bot thread to terminate...", "module": "gui_application", "funcName": "stop_bot", "lineNo": 237}
+{"timestamp": "2025-10-20 21:26:55,629", "level": "INFO", "message": "[ENGINE STATUS] stopped", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:27:05,322", "level": "INFO", "message": "Bot shutdown complete.", "module": "gui_application", "funcName": "stop_bot", "lineNo": 243}
+{"timestamp": "2025-10-20 21:27:05,395", "level": "INFO", "message": "[ENGINE STATUS] engine_stopped", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:31:36,406", "level": "INFO", "message": "Logging initialized -> human log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot.log | json log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot_structured.log", "module": "logging_config", "funcName": "setup_logging", "lineNo": 98}
+{"timestamp": "2025-10-20 21:31:38,528", "level": "INFO", "message": "Initialized Okx client.", "module": "exchange_manager", "funcName": "_initialize_clients", "lineNo": 31}
+{"timestamp": "2025-10-20 21:31:41,254", "level": "INFO", "message": "Initialized Binance client.", "module": "exchange_manager", "funcName": "_initialize_clients", "lineNo": 31}
+{"timestamp": "2025-10-20 21:31:46,671", "level": "INFO", "message": "Initialized Bybit client.", "module": "exchange_manager", "funcName": "_initialize_clients", "lineNo": 31}
+{"timestamp": "2025-10-20 21:31:46,671", "level": "INFO", "message": "SyncArbitrageEngine initialized (poll=0.75s)", "module": "bot_engine", "funcName": "__init__", "lineNo": 90}
+{"timestamp": "2025-10-20 21:31:54,052", "level": "INFO", "message": "--- Starting New Session ---", "module": "gui_application", "funcName": "start_bot", "lineNo": 207}
+{"timestamp": "2025-10-20 21:31:54,052", "level": "INFO", "message": "Mode: LIVE TRADING", "module": "gui_application", "funcName": "start_bot", "lineNo": 208}
+{"timestamp": "2025-10-20 21:31:54,052", "level": "INFO", "message": "Sizing Mode: FIXED @ $600.00", "module": "gui_application", "funcName": "start_bot", "lineNo": 211}
+{"timestamp": "2025-10-20 21:31:54,053", "level": "INFO", "message": "Symbols: BTC/USDT, ETH/USDT, SOL/USDT, XRP/USDT, ADA/USDT, AVAX/USDT, BNB/USDT, LINK/USDT, DOGE/USDT, SHIB/USDT", "module": "gui_application", "funcName": "start_bot", "lineNo": 217}
+{"timestamp": "2025-10-20 21:31:54,086", "level": "INFO", "message": "[ENGINE STATUS] engine_started", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:31:54,114", "level": "INFO", "message": "[ENGINE STATUS] warming_up", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:31:54,120", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:31:54,870", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:31:55,621", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:31:56,371", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:31:57,122", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:31:57,873", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:31:58,624", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:31:59,375", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:00,125", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:00,876", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:01,626", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:02,376", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:03,127", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:03,878", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:04,628", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:05,379", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:06,129", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:06,880", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:07,630", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:08,381", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:09,131", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:09,881", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:10,632", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:11,383", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:12,133", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:12,883", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:13,634", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:14,384", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:15,135", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:15,886", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:16,637", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:17,388", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:18,139", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:18,889", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:19,640", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:20,390", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:21,141", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:21,891", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:22,641", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:23,392", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:24,143", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:24,894", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:25,645", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:26,396", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:27,147", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:27,898", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:28,648", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:29,399", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:30,150", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:30,900", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:31,651", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:32,401", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:33,151", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:33,902", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:34,653", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:35,404", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:36,155", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:36,906", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:37,657", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:38,408", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:39,159", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:39,708", "level": "INFO", "message": "[ENGINE STATUS] engine_stopping", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:39,709", "level": "INFO", "message": "[Trade] received stop signal", "module": "trade_executor", "funcName": "_emit", "lineNo": 230}
+{"timestamp": "2025-10-20 21:32:39,710", "level": "INFO", "message": "Engine stopped", "module": "bot_engine", "funcName": "stop", "lineNo": 146}
+{"timestamp": "2025-10-20 21:32:39,710", "level": "INFO", "message": "Waiting for bot thread to terminate...", "module": "gui_application", "funcName": "stop_bot", "lineNo": 252}
+{"timestamp": "2025-10-20 21:32:39,910", "level": "INFO", "message": "[ENGINE STATUS] stopped", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:32:49,876", "level": "INFO", "message": "[ENGINE STATUS] engine_stopped", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:36:20,432", "level": "INFO", "message": "Logging initialized -> human log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot.log | json log: D:\\Dev\\py\\crypto_arbitrage_bot\\logs\\bot_structured.log", "module": "logging_config", "funcName": "setup_logging", "lineNo": 98}
+{"timestamp": "2025-10-20 21:36:22,562", "level": "INFO", "message": "Initialized Okx client.", "module": "exchange_manager", "funcName": "_initialize_clients", "lineNo": 31}
+{"timestamp": "2025-10-20 21:36:25,448", "level": "INFO", "message": "Initialized Binance client.", "module": "exchange_manager", "funcName": "_initialize_clients", "lineNo": 31}
+{"timestamp": "2025-10-20 21:36:31,147", "level": "INFO", "message": "Initialized Bybit client.", "module": "exchange_manager", "funcName": "_initialize_clients", "lineNo": 31}
+{"timestamp": "2025-10-20 21:36:31,147", "level": "INFO", "message": "SyncArbitrageEngine initialized (poll=0.75s)", "module": "bot_engine", "funcName": "__init__", "lineNo": 90}
+{"timestamp": "2025-10-20 21:36:44,159", "level": "INFO", "message": "--- Starting New Session ---", "module": "gui_application", "funcName": "start_bot", "lineNo": 207}
+{"timestamp": "2025-10-20 21:36:44,159", "level": "INFO", "message": "Mode: LIVE TRADING", "module": "gui_application", "funcName": "start_bot", "lineNo": 208}
+{"timestamp": "2025-10-20 21:36:44,160", "level": "INFO", "message": "Sizing Mode: FIXED @ $600.00", "module": "gui_application", "funcName": "start_bot", "lineNo": 211}
+{"timestamp": "2025-10-20 21:36:44,160", "level": "INFO", "message": "Symbols: ETH/USDT", "module": "gui_application", "funcName": "start_bot", "lineNo": 217}
+{"timestamp": "2025-10-20 21:36:44,203", "level": "INFO", "message": "[ENGINE STATUS] engine_started", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:36:47,156", "level": "INFO", "message": "[ENGINE STATUS] warming_up", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:36:47,161", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:36:47,912", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:36:48,662", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:36:49,412", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:36:53,150", "level": "INFO", "message": "  Fetching order book for ETH/USDT on OKX...", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 103}
+{"timestamp": "2025-10-20 21:36:53,390", "level": "INFO", "message": "  ...Success for OKX.", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 106}
+{"timestamp": "2025-10-20 21:36:53,391", "level": "INFO", "message": "  Fetching order book for ETH/USDT on BINANCE...", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 103}
+{"timestamp": "2025-10-20 21:36:53,650", "level": "INFO", "message": "  ...Success for BINANCE.", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 106}
+{"timestamp": "2025-10-20 21:36:53,650", "level": "INFO", "message": "  Fetching order book for ETH/USDT on BYBIT...", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 103}
+{"timestamp": "2025-10-20 21:36:53,846", "level": "INFO", "message": "  ...Success for BYBIT.", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 106}
+{"timestamp": "2025-10-20 21:36:53,871", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:37:04,688", "level": "INFO", "message": "  Fetching order book for ETH/USDT on OKX...", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 103}
+{"timestamp": "2025-10-20 21:37:05,029", "level": "INFO", "message": "  ...Success for OKX.", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 106}
+{"timestamp": "2025-10-20 21:37:05,029", "level": "INFO", "message": "  Fetching order book for ETH/USDT on BINANCE...", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 103}
+{"timestamp": "2025-10-20 21:37:05,290", "level": "INFO", "message": "  ...Success for BINANCE.", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 106}
+{"timestamp": "2025-10-20 21:37:05,290", "level": "INFO", "message": "  Fetching order book for ETH/USDT on BYBIT...", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 103}
+{"timestamp": "2025-10-20 21:37:05,481", "level": "INFO", "message": "  ...Success for BYBIT.", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 106}
+{"timestamp": "2025-10-20 21:37:09,929", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:37:10,680", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:37:11,430", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:37:15,703", "level": "INFO", "message": "  Fetching order book for ETH/USDT on OKX...", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 103}
+{"timestamp": "2025-10-20 21:37:16,027", "level": "INFO", "message": "  ...Success for OKX.", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 106}
+{"timestamp": "2025-10-20 21:37:16,027", "level": "INFO", "message": "  Fetching order book for ETH/USDT on BINANCE...", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 103}
+{"timestamp": "2025-10-20 21:37:16,282", "level": "INFO", "message": "  ...Success for BINANCE.", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 106}
+{"timestamp": "2025-10-20 21:37:16,282", "level": "INFO", "message": "  Fetching order book for ETH/USDT on BYBIT...", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 103}
+{"timestamp": "2025-10-20 21:37:16,474", "level": "INFO", "message": "  ...Success for BYBIT.", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 106}
+{"timestamp": "2025-10-20 21:37:21,016", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:37:21,767", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:37:22,517", "level": "INFO", "message": "[ENGINE STATUS] ok", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:37:27,035", "level": "INFO", "message": "  Fetching order book for ETH/USDT on OKX...", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 103}
+{"timestamp": "2025-10-20 21:37:27,387", "level": "INFO", "message": "  ...Success for OKX.", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 106}
+{"timestamp": "2025-10-20 21:37:27,387", "level": "INFO", "message": "  Fetching order book for ETH/USDT on BINANCE...", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 103}
+{"timestamp": "2025-10-20 21:37:27,645", "level": "INFO", "message": "  ...Success for BINANCE.", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 106}
+{"timestamp": "2025-10-20 21:37:27,645", "level": "INFO", "message": "  Fetching order book for ETH/USDT on BYBIT...", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 103}
+{"timestamp": "2025-10-20 21:37:27,838", "level": "INFO", "message": "  ...Success for BYBIT.", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 106}
+{"timestamp": "2025-10-20 21:37:32,245", "level": "INFO", "message": "[ENGINE STATUS] engine_stopping", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:37:32,246", "level": "INFO", "message": "[Trade] received stop signal", "module": "trade_executor", "funcName": "_emit", "lineNo": 230}
+{"timestamp": "2025-10-20 21:37:32,246", "level": "INFO", "message": "Engine stopped", "module": "bot_engine", "funcName": "stop", "lineNo": 146}
+{"timestamp": "2025-10-20 21:37:32,246", "level": "INFO", "message": "Waiting for bot thread to terminate...", "module": "gui_application", "funcName": "stop_bot", "lineNo": 254}
+{"timestamp": "2025-10-20 21:37:42,282", "level": "INFO", "message": "Bot shutdown complete.", "module": "gui_application", "funcName": "stop_bot", "lineNo": 260}
+{"timestamp": "2025-10-20 21:37:46,931", "level": "INFO", "message": "  Fetching order book for ETH/USDT on OKX...", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 103}
+{"timestamp": "2025-10-20 21:37:47,174", "level": "INFO", "message": "  ...Success for OKX.", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 106}
+{"timestamp": "2025-10-20 21:37:47,174", "level": "INFO", "message": "  Fetching order book for ETH/USDT on BINANCE...", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 103}
+{"timestamp": "2025-10-20 21:37:47,431", "level": "INFO", "message": "  ...Success for BINANCE.", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 106}
+{"timestamp": "2025-10-20 21:37:47,431", "level": "INFO", "message": "  Fetching order book for ETH/USDT on BYBIT...", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 103}
+{"timestamp": "2025-10-20 21:37:47,951", "level": "INFO", "message": "  ...Success for BYBIT.", "module": "exchange_manager", "funcName": "get_market_data", "lineNo": 106}
+{"timestamp": "2025-10-20 21:37:48,065", "level": "INFO", "message": "[ENGINE STATUS] stopped", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}
+{"timestamp": "2025-10-20 21:37:48,078", "level": "INFO", "message": "[ENGINE STATUS] engine_stopped", "module": "gui_application", "funcName": "on_engine_status", "lineNo": 96}

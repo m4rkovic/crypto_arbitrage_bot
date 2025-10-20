@@ -8,9 +8,9 @@ import customtkinter as ctk
 from tkinter import messagebox
 from dotenv import load_dotenv
 
-import logging_config # <-- IMPORT THE NEW FILE
-from utils import load_config, ConfigError
-from gui_application import App
+import config.logging_config as logging_config # <-- IMPORT THE NEW FILE
+from core.utils import load_config, ConfigError
+from gui_components.gui_application import App
 
 def setup_simple_logging():
     """Configures a simple rotating file logger and a console logger."""
@@ -37,7 +37,7 @@ def setup_simple_logging():
 if __name__ == "__main__":
     load_dotenv()
     try:
-        setup_simple_logging()
+        logging_config.setup_logging()
         config = load_config()
         
         EXCHANGES = {

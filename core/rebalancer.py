@@ -9,8 +9,8 @@ Rebalancer za Phase-3 (preuzет из Phase-4, али поједноставље
 import logging
 from typing import Any, Dict
 
-from exchange_manager import ExchangeManager
-from utils import retry_ccxt_call
+from core.exchange_manager import ExchangeManager
+from core.utils import retry_ccxt_call
 
 
 class Rebalancer:

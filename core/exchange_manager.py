@@ -5,7 +5,7 @@ import time
 import logging
 from typing import Any, Dict, Optional
 
-from utils import retry_ccxt_call, ExchangeInitError
+from core.utils import retry_ccxt_call, ExchangeInitError
 
 class ExchangeManager:
     """Manages all exchange clients, API calls, and cached data."""
@@ -120,14 +120,39 @@ class ExchangeManager:
         return prices
 
     def close_all_clients(self):
-        self.logger.info("Closing all exchange connections...")
+            self.logger.info("Closing all exchange connections...")
+            for name, client in self.clients.items():
+                try:
+                    if hasattr(client, 'close'):
+                        client.close()
+                        self.logger.info(f"Closed connection to {name.capitalize()}.")
+                except Exception as e:
+                    self.logger.warning(f"Could not close connection for {name.capitalize()}: {e}")
+
+    async def fetch_balances_async(self, exchange):
+        try:
+            return await exchange.fetch_balance()
+        except Exception as e:
+            self.log.warning(f"Failed to fetch balance for {exchange.id}: {e}")
+            return {}
+
+    def get_all_balances(self) -> dict:
+        """Return a unified dict of balances for all connected exchanges."""
+        result = {}
         for name, client in self.clients.items():
             try:
-                if hasattr(client, 'close'):
-                    client.close()
-                    self.logger.info(f"Closed connection to {name.capitalize()}.")
+                balance = retry_ccxt_call(client.fetch_balance)()
+                result[name] = {}
+                # Normalize totals — CCXT returns numeric values
+                for asset, total in balance.get("total", {}).items():
+                    if isinstance(total, (int, float)) and total > 0:
+                        result[name][asset] = round(float(total), 4)
             except Exception as e:
-                self.logger.warning(f"Could not close connection for {name.capitalize()}: {e}")
+                self.logger.warning(f"Balance fetch failed for {name}: {e}")
+                result[name] = {}
+        return result
+
+                
 
 # import ccxt
 # import time

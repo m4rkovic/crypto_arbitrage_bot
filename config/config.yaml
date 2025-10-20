@@ -25,7 +25,7 @@ trading_parameters:
   sizing_mode: 'fixed'  # Can be 'fixed' or 'dynamic'
   
   # -- Fixed Sizing --
-  trade_size_usdt: 20.0
+  trade_size_usdt: 600.0
   
   # -- Dynamic Sizing --
   dynamic_size_percentage: 5.0   # 5% of available quote balance
@@ -34,7 +34,7 @@ trading_parameters:
   # --- PROFITABILITY & FEES ---
   min_profit_usd: 0.05
   fee_percent: 0.1
-  dry_run: true
+  dry_run: false
   
   # --- TIMING ---
   scan_interval_s: 3.0

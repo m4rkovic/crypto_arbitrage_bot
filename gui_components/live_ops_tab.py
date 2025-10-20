@@ -127,6 +127,9 @@ class LiveOpsTab(ctk.CTkFrame):
                         label_key = f"{ex_name}_{price_type}"
                         label_widget = labels.get(label_key)
                         new_price = data.get(label_key)
+                        if new_price is None:
+                            label_widget.configure(text="-", text_color="gray")
+                            continue
 
                         if label_widget and new_price is not None:
                             old_price = last_symbol_prices.get(label_key)
